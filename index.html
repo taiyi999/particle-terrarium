@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>回声花园 · Echo Garden — ZCode 的第三个世界</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #05070e;
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; }
+  #c { position: fixed; inset: 0; display: block; cursor: crosshair; }
+
+  .card { position: fixed; z-index: 10; background: rgba(10,13,24,.72);
+    border: 1px solid rgba(255,255,255,.09); border-radius: 14px;
+    padding: 12px 14px; color: #dfe4f2; font-size: 12.5px; line-height: 1.55;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 8px 30px rgba(0,0,0,.45); }
+
+  #titleCard { top: 14px; left: 14px; max-width: 350px; }
+  #titleCard h1 { font-size: 17px; font-weight: 600; letter-spacing: 2px;
+    background: linear-gradient(90deg,#ffd7e8,#c9a1ff,#8ad1ff);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #titleCard .sub { color: #9aa4c0; margin-top: 4px; font-size: 12px; }
+  #titleCard .hint { margin-top: 7px; color: #7d87a6; font-size: 11px; }
+  #titleCard .who { margin-top: 6px; color: #5f6a88; font-size: 11px; }
+  kbd { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18);
+    border-radius: 4px; padding: 0 5px; font-size: 10.5px; font-family: inherit; }
+
+  #ctrlCard { top: 14px; right: 14px; width: 246px;
+    max-height: calc(100vh - 28px); overflow-y: auto; }
+  #ctrlCard h2, .card h2 { font-size: 11.5px; font-weight: 600; color: #8f9ab8;
+    letter-spacing: 1.5px; margin-bottom: 8px; }
+  .row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+  .row label { flex: 0 0 68px; color: #c4cde6; font-size: 12px; }
+  .row output { flex: 0 0 38px; text-align: right; color: #d8a7ff;
+    font-variant-numeric: tabular-nums; font-size: 11.5px; }
+  input[type=range] { flex: 1; accent-color: #c98aff; height: 14px; cursor: pointer; }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  button { background: rgba(255,255,255,.08); color: #dfe4f2;
+    border: 1px solid rgba(255,255,255,.14); border-radius: 8px;
+    padding: 4px 10px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  button:hover { background: rgba(255,255,255,.16); }
+  button.on { background: rgba(201,138,255,.24); border-color: rgba(201,138,255,.55); }
+  .seasons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+  .seasons button { width: 100%; }
+
+  #statCard { bottom: 14px; right: 14px; width: 262px; }
+  .statline { color: #aeb8d6; font-size: 11.5px; margin: 2px 0;
+    font-variant-numeric: tabular-nums; }
+  .statline b { color: #e8edf8; font-weight: 600; }
+  .clabel { font-size: 10px; color: #6f7a99; margin-top: 6px; }
+  #cv-song { display: block; margin: 5px 0 2px; }
+
+  #gate { position: fixed; inset: 0; z-index: 50; display: flex;
+    flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at 50% 60%, #131a30 0%, #05070e 70%);
+    color: #dfe4f2; cursor: pointer; transition: opacity .8s; text-align: center; }
+  #gate.gone { opacity: 0; pointer-events: none; }
+  #gate h1 { font-size: 30px; font-weight: 600; letter-spacing: 6px; margin-bottom: 14px;
+    background: linear-gradient(90deg,#ffd7e8,#c9a1ff,#8ad1ff);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #gate p { color: #9aa4c0; font-size: 14px; line-height: 2; }
+  #gate .go { margin-top: 26px; font-size: 15px; color: #e8edf8;
+    border: 1px solid rgba(255,255,255,.25); border-radius: 24px; padding: 9px 30px;
+    animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: .65 } 50% { opacity: 1 } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="gate">
+  <h1>回 声 花 园</h1>
+  <p>一片会自己作曲的花田。<br>每朵花是一个音符，风是它们的指挥。<br>这里的一切声音都由你的浏览器实时合成。</p>
+  <div class="go">轻点任意处，走进花园 ♪</div>
+</div>
+
+<div class="card" id="titleCard" style="display:none">
+  <h1>回声花园 · Echo Garden</h1>
+  <div class="sub">每朵花是一个乐句基因，风是它们的指挥。<br>没有人写下任何旋律——花园自己唱。</div>
+  <div class="hint"><b>点击空地种花</b>，点击花朵移走它 ｜ <kbd>空格</kbd>暂停 ｜ ⏺ 录下花园此刻的歌</div>
+  <div class="who">—— ZCode 的第三个世界 · 2026-10-02</div>
+</div>
+
+<div class="card" id="ctrlCard" style="display:none">
+  <h2>季节</h2>
+  <div class="seasons">
+    <button id="m-0" class="on">🌸 春晓</button>
+    <button id="m-1">🌙 夏夜</button>
+    <button id="m-2">🌧 秋雨</button>
+    <button id="m-3">❄ 冬雪</button>
+  </div>
+  <h2>天气</h2>
+  <div class="row"><label>风频</label><input type="range" id="s-wind" min="0.3" max="2.5" step="0.1" value="1"><output id="o-wind"></output></div>
+  <div class="row"><label>花语密度</label><input type="range" id="s-dens" min="0.3" max="2.5" step="0.1" value="1"><output id="o-dens"></output></div>
+  <div class="row"><label>回声深度</label><input type="range" id="s-echo" min="0" max="1" step="0.05" value="0.5"><output id="o-echo"></output></div>
+  <div class="btns">
+    <button id="b-pause">⏸</button>
+    <button id="b-mute">🔊</button>
+    <button id="b-rec">⏺ 录音</button>
+    <button id="b-reset">↺ 重植</button>
+    <button id="b-save">💾 存档</button>
+    <button id="b-load">📂 载入</button>
+    <input type="file" id="f-load" accept=".json" style="display:none">
+  </div>
+</div>
+
+<div class="card" id="statCard" style="display:none">
+  <h2>花园乐谱</h2>
+  <div class="statline">花朵 <b id="st-flowers">0</b> ｜ 已吟唱 <b id="st-notes">0</b> 音 ｜ <span id="st-season"></span></div>
+  <div class="statline">风向 <b id="st-wind">—</b> ｜ <span id="st-fps"></span></div>
+  <div class="clabel">声音的形状（吟唱密度）</div>
+  <canvas id="cv-song" width="232" height="40"></canvas>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ============ 工具 ============ */
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+function gauss(m = 0, s = 1) {
+  let u = 0, v = 0;
+  while (!u) u = Math.random();
+  while (!v) v = Math.random();
+  return m + s * Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v);
+}
+const NOTE = (semi) => 440 * Math.pow(2, (semi - 9) / 12);   // 半音数→频率（0=C4）
+
+/* ============ 季相 ============ */
+const SEASONS = [
+  { name: '春晓', base: 0,  scale: [0,2,4,7,9,12,14,16],   windP: 13, delayWet: .32, revWet: .30, bloom: 1.0,
+    sky: ['#0e1b33','#1d3355','#3d5a80'], grass: '#17323b', glow: 1.0, rain: false },
+  { name: '夏夜', base: -3, scale: [0,3,5,7,10,12,15,17],  windP: 18, delayWet: .48, revWet: .38, bloom: .8,
+    sky: ['#070b1a','#101736','#241b45'], grass: '#0e2430', glow: 1.15, rain: false, stars: true },
+  { name: '秋雨', base: 2,  scale: [0,2,3,5,7,10,12,14],   windP: 9,  delayWet: .42, revWet: .46, bloom: .9,
+    sky: ['#0d1218','#1b2430','#2e3a46'], grass: '#152226', glow: .8, rain: true },
+  { name: '冬雪', base: 4,  scale: [0,2,5,7,12,14,17],     windP: 26, delayWet: .55, revWet: .60, bloom: .55,
+    sky: ['#0a0e1c','#161d36','#2a3352'], grass: '#1a2136', glow: 1.05, rain: false, snow: true },
+];
+let seasonIdx = 0;
+const S = () => SEASONS[seasonIdx];
+
+/* ============ 状态 ============ */
+const params = { windFreq: 1, density: 1, echo: 0.5 };
+let paused = false, muted = false, started = false;
+let W = 0, H = 0;
+let flowers = [], seeds = [], drops = [], flakes = [], rings = [];
+let simT = 0, noteCount = 0, phraseCount = 0;
+let windX = -400, windDir = 1, windNext = 6, windActive = false;
+
+/* 花朵基因组：hue 色相 / degree 音级偏移 / period 节律周期 / phase 相位 / petal 花瓣数 / timbre 音色 */
+function randomFlower(x, y) {
+  return {
+    x: x ?? Math.random() * W, y: y ?? (H * 0.45 + Math.random() * H * 0.5),
+    hue: Math.random(),
+    degree: Math.floor(Math.random() * 8),
+    period: 5 + Math.random() * 9,
+    phase: Math.random(),
+    petal: 5 + (Math.random() * 3 | 0),
+    timbre: Math.random(),
+    size: 7 + Math.random() * 7,
+    next: 0, pulse: 0, born: simT,
+  };
+}
+function replant() {
+  flowers = []; seeds = []; rings = [];
+  simT = 0; noteCount = 0; phraseCount = 0; windNext = 4; windActive = false;
+  const n = 34 + (Math.random() * 8 | 0);
+  for (let i = 0; i < n; i++) flowers.push(randomFlower());
+}
+
+/* ============ 音频引擎（进入时创建） ============ */
+let ctx = null, fxBus, master, comp, delay, delayFb, delayWet, conv, revWet, dryWet,
+    analyser, mediaDest, recorder = null, recChunks = [];
+
+function initAudio() {
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  master = ctx.createGain(); master.gain.value = 0.9;
+  comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -22; comp.ratio.value = 6;
+  analyser = ctx.createAnalyser(); analyser.fftSize = 512;
+  mediaDest = ctx.createMediaStreamDestination();
+
+  delay = ctx.createDelay(2.5); delay.delayTime.value = 0.38;
+  delayFb = ctx.createGain(); delayFb.gain.value = 0.42;
+  delayWet = ctx.createGain(); delayWet.gain.value = params.echo * 0.7;
+  delay.connect(delayFb); delayFb.connect(delay);
+
+  conv = ctx.createConvolver();
+  conv.buffer = makeIR(ctx, 2.8, 2.2);           // 生成的混响脉冲
+  revWet = ctx.createGain(); revWet.gain.value = 0.3;
+
+  dryWet = ctx.createGain(); dryWet.gain.value = 1;
+  fxBus = ctx.createGain();
+  fxBus.connect(dryWet);
+  fxBus.connect(delay); delay.connect(delayWet);
+  delayWet.connect(conv);
+  fxBus.connect(conv);
+  conv.connect(revWet);
+  dryWet.connect(comp); revWet.connect(comp);
+  comp.connect(master); master.connect(analyser); analyser.connect(ctx.destination);
+  master.connect(mediaDest);
+  applySeasonAudio();
+}
+function makeIR(ctx, dur, decay) {
+  const rate = ctx.sampleRate, len = rate * dur;
+  const buf = ctx.createBuffer(2, len, rate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++)
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+  }
+  return buf;
+}
+function applySeasonAudio() {
+  if (!ctx) return;
+  const s = S();
+  const t = ctx.currentTime;
+  delayWet.gain.linearRampToValueAtTime(params.echo * (0.4 + s.delayWet * 0.8), t + 1.2);
+  revWet.gain.linearRampToValueAtTime(s.revWet * params.echo, t + 1.2);
+  delay.delayTime.linearRampToValueAtTime(s.windP > 20 ? 0.52 : 0.38, t + 1.2);
+}
+
+/* 一次吟唱：两枚失谐振荡器 + 低通 + 指数衰减 */
+function chime(f) {
+  if (!ctx || ctx.state !== 'running') return;
+  const s = S();
+  const deg = s.scale[f.degree % s.scale.length];
+  const freq = NOTE(s.base + deg + 12 * (f.timbre > 0.85 ? 1 : 0));
+  const t0 = ctx.currentTime + 0.02;
+  const dur = 2.2 + f.timbre * 2.5 + (s.windP > 20 ? 1.5 : 0);
+
+  const g = ctx.createGain();
+  const peak = 0.16 / Math.sqrt(flowers.length / 30 + 1);
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(peak, t0 + 0.012);
+  g.gain.exponentialRampToValueAtTime(peak * 0.28, t0 + 0.4);
+  g.gain.exponentialRampToValueAtTime(0.0004, t0 + dur);
+
+  const flt = ctx.createBiquadFilter();
+  flt.type = 'lowpass';
+  flt.frequency.setValueAtTime(1400 + f.timbre * 2600, t0);
+  flt.frequency.exponentialRampToValueAtTime(600, t0 + dur);
+
+  const o1 = ctx.createOscillator();
+  o1.type = 'triangle'; o1.frequency.value = freq;
+  const o2 = ctx.createOscillator();
+  o2.type = 'sine'; o2.frequency.value = freq * 2.001;      // 轻微失谐的高八度泛音
+  const g2 = ctx.createGain(); g2.gain.value = 0.18 + f.timbre * 0.3;
+
+  o1.connect(flt); o2.connect(g2); g2.connect(flt);
+  flt.connect(g); g.connect(fxBus);
+  o1.start(t0); o2.start(t0);
+  o1.stop(t0 + dur + 0.1); o2.stop(t0 + dur + 0.1);
+
+  noteCount++;
+  f.pulse = 1;
+  rings.push({ x: f.x, y: f.y, r: f.size, a: 0.5, hue: f.hue });
+}
+
+/* 雨声：滤波噪声碎击 */
+let rainNext = 0;
+function rainTick() {
+  if (!ctx || ctx.state !== 'running') return;
+  const t0 = ctx.currentTime + 0.01;
+  const dur = 0.05 + Math.random() * 0.08;
+  const src = ctx.createBufferSource();
+  const b = ctx.createBuffer(1, ctx.sampleRate * dur | 0, ctx.sampleRate);
+  const d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+  src.buffer = b;
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 3000 + Math.random() * 3000; bp.Q.value = 2.5;
+  const g = ctx.createGain(); g.gain.value = 0.028 + Math.random() * 0.03;
+  src.connect(bp); bp.connect(g); g.connect(fxBus);
+  src.start(t0);
+}
+
+/* ============ 画布 ============ */
+const canvas = document.getElementById('c');
+const ctx2d = canvas.getContext('2d');
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resize);
+
+function draw(t) {
+  const s = S();
+  // 天空
+  const sky = ctx2d.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, s.sky[0]); sky.addColorStop(0.6, s.sky[1]); sky.addColorStop(1, s.sky[2]);
+  ctx2d.fillStyle = sky; ctx2d.fillRect(0, 0, W, H);
+
+  if (s.stars) {
+    ctx2d.fillStyle = 'rgba(255,255,255,0.8)';
+    for (let i = 0; i < 90; i++) {
+      const x = (i * 137.5 + t * 0.002) % W, y = (i * 79.3) % (H * 0.55);
+      ctx2d.globalAlpha = 0.25 + 0.5 * Math.abs(Math.sin(i * 3.1 + t * 0.0005));
+      ctx2d.fillRect(x, y, 1.4, 1.4);
+    }
+    ctx2d.globalAlpha = 1;
+  }
+
+  // 风（扫过的光带）
+  if (windActive) {
+    const wg = ctx2d.createLinearGradient(windX - 260, 0, windX + 260, 0);
+    wg.addColorStop(0, 'rgba(255,255,255,0)');
+    wg.addColorStop(0.5, 'rgba(200,220,255,0.055)');
+    wg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx2d.fillStyle = wg;
+    ctx2d.fillRect(windX - 260, 0, 520, H);
+  }
+
+  // 吟唱涟漪
+  for (const r of rings) {
+    ctx2d.strokeStyle = `hsla(${r.hue * 360},80%,72%,${r.a})`;
+    ctx2d.lineWidth = 1.5;
+    ctx2d.beginPath(); ctx2d.arc(r.x, r.y, r.r, 0, TAU); ctx2d.stroke();
+  }
+
+  // 草地剪影
+  ctx2d.fillStyle = s.grass;
+  ctx2d.beginPath();
+  ctx2d.moveTo(0, H);
+  for (let x = 0; x <= W; x += 30) {
+    const sway = windActive ? Math.sin(x * 0.01 + t * 0.003) * 8 : 0;
+    ctx2d.quadraticCurveTo(x + 15, H * 0.86 + sway * 0.4, x + 30, H * 0.9 + Math.sin(x * 0.005) * 14);
+  }
+  ctx2d.lineTo(W, H); ctx2d.closePath(); ctx2d.fill();
+
+  // 花
+  for (const f of flowers) {
+    const grow = clamp((simT - f.born) / 4, 0, 1);
+    const sz = f.size * (0.3 + 0.7 * grow);
+    const sway = Math.sin(t * 0.0012 + f.phase * TAU) * 3
+               + (windActive ? windDir * 6 * Math.exp(-Math.abs(f.x - windX) / 400) : 0);
+    const stemTop = f.y;
+    ctx2d.strokeStyle = 'rgba(40,80,60,0.9)';
+    ctx2d.lineWidth = 1.6;
+    ctx2d.beginPath();
+    ctx2d.moveTo(f.x, f.y + sz * 2.2);
+    ctx2d.quadraticCurveTo(f.x + sway, stemTop + sz, f.x + sway, stemTop);
+    ctx2d.stroke();
+
+    const cx = f.x + sway, cy = stemTop;
+    const glow = s.glow * (0.55 + 0.45 * f.pulse);
+    const col = `hsl(${f.hue * 360},75%,${58 + f.pulse * 14}%)`;
+    const halo = ctx2d.createRadialGradient(cx, cy, 0, cx, cy, sz * (2.6 + f.pulse * 1.6));
+    halo.addColorStop(0, `hsla(${f.hue * 360},85%,70%,${0.30 * glow})`);
+    halo.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx2d.fillStyle = halo;
+    ctx2d.fillRect(cx - sz * 4.5, cy - sz * 4.5, sz * 9, sz * 9);
+
+    ctx2d.fillStyle = col;
+    for (let p = 0; p < f.petal; p++) {
+      const a = p / f.petal * TAU + t * 0.0002 * (f.timbre - 0.5) * 4;
+      const px = cx + Math.cos(a) * sz * 0.62, py = cy + Math.sin(a) * sz * 0.62;
+      ctx2d.beginPath();
+      ctx2d.ellipse(px, py, sz * 0.5, sz * 0.3, a, 0, TAU);
+      ctx2d.fill();
+    }
+    ctx2d.fillStyle = 'rgba(255,240,200,0.95)';
+    ctx2d.beginPath(); ctx2d.arc(cx, cy, sz * 0.3, 0, TAU); ctx2d.fill();
+  }
+
+  // 种子（风播）
+  ctx2d.fillStyle = 'rgba(230,240,220,0.75)';
+  for (const sd of seeds) ctx2d.fillRect(sd.x, sd.y, 1.6, 1.6);
+
+  // 雨 / 雪
+  if (s.rain) {
+    ctx2d.strokeStyle = 'rgba(170,200,230,0.35)';
+    ctx2d.beginPath();
+    for (const d of drops) { ctx2d.moveTo(d.x, d.y); ctx2d.lineTo(d.x - 1.5, d.y + 9); }
+    ctx2d.stroke();
+  }
+  if (s.snow) {
+    ctx2d.fillStyle = 'rgba(235,240,255,0.7)';
+    for (const d of flakes) ctx2d.fillRect(d.x, d.y, 1.8, 1.8);
+  }
+}
+
+/* ============ 模拟 ============ */
+function step(dt, t) {
+  simT += dt;
+  const s = S();
+
+  // 风的调度
+  windNext -= dt * params.windFreq;
+  if (!windActive && windNext <= 0) {
+    windActive = true;
+    windDir = Math.random() < 0.5 ? 1 : -1;
+    windX = windDir > 0 ? -300 : W + 300;
+    phraseCount++;
+  }
+  if (windActive) {
+    const prev = windX;
+    windX += windDir * (W + 700) / (s.windP * 0.42) * dt;
+    // 风扫过谁，谁吟唱
+    for (const f of flowers)
+      if ((windDir > 0 && f.x > prev && f.x <= windX) || (windDir < 0 && f.x < prev && f.x >= windX))
+        if (simT - f.next > 1.2) { chime(f); f.next = simT; }
+    if (windX < -400 || windX > W + 400) {
+      windActive = false;
+      windNext = s.windP * (0.7 + Math.random() * 0.6);
+    }
+  }
+
+  // 自主节律吟唱
+  for (const f of flowers) {
+    const period = f.period / (params.density * s.bloom);
+    if (simT - f.next > period && !windActive) {
+      if (Math.random() < 0.4) { chime(f); }
+      f.next = simT;
+    }
+    f.pulse *= Math.pow(0.2, dt);
+  }
+
+  // 风播种子：偶尔一朵花结实，种子落地成新花
+  if (flowers.length < 90 && Math.random() < dt * 0.10 * params.density && flowers.length) {
+    const mom = flowers[(Math.random() * flowers.length) | 0];
+    seeds.push({ x: mom.x, y: mom.y - 4, vx: windDir * 24 + gauss(0, 8), vy: -14, mom });
+  }
+  for (const sd of seeds) {
+    sd.vy += 26 * dt;
+    sd.x += (sd.vx + (windActive ? windDir * 40 : 0)) * dt;
+    sd.y += sd.vy * dt;
+    if (sd.y > H * 0.5 + Math.random() * H * 0.42) {
+      const baby = randomFlower(sd.x, sd.y);
+      baby.hue = (sd.mom.hue + gauss(0, 0.04) + 1) % 1;   // 血统：色相微漂变
+      baby.degree = Math.random() < 0.12
+        ? (baby.degree + (Math.random() < 0.5 ? 1 : -1) + 8) % 8 : sd.mom.degree;
+      baby.timbre = clamp(sd.mom.timbre + gauss(0, 0.06), 0, 1);
+      baby.period = clamp(sd.mom.period + gauss(0, 1), 4, 16);
+      baby.petal = sd.mom.petal; baby.size = sd.mom.size + gauss(0, 1);
+      flowers.push(baby);
+      sd.dead = true;
+    }
+  }
+  if (seeds.some(d => d.dead)) seeds = seeds.filter(d => !d.dead);
+
+  // 涟漪与天气粒子
+  for (const r of rings) { r.r += 60 * dt; r.a -= 0.5 * dt; }
+  if (rings.some(r => r.a <= 0)) rings = rings.filter(r => r.a > 0);
+
+  if (s.rain) {
+    while (drops.length < 120) drops.push({ x: Math.random() * W, y: Math.random() * H, v: 420 + Math.random() * 260 });
+    for (const d of drops) { d.y += d.v * dt; d.x -= 30 * dt; if (d.y > H) { d.y = -10; d.x = Math.random() * W; } }
+    rainNext -= dt;
+    if (rainNext <= 0) { rainTick(); rainNext = 0.09 + Math.random() * 0.25; }
+  } else drops.length = 0;
+
+  if (s.snow) {
+    while (flakes.length < 90) flakes.push({ x: Math.random() * W, y: Math.random() * H, v: 24 + Math.random() * 30, ph: Math.random() * TAU });
+    for (const d of flakes) { d.y += d.v * dt; d.ph += dt; d.x += Math.sin(d.ph) * 14 * dt; if (d.y > H) { d.y = -8; d.x = Math.random() * W; } }
+  } else flakes.length = 0;
+}
+
+/* ============ 吟唱密度图 ============ */
+let songHist = new Array(120).fill(0), noteAcc = 0, songAcc = 0;
+function drawSong() {
+  const cv = document.getElementById('cv-song');
+  const g = cv.getContext('2d');
+  g.clearRect(0, 0, cv.width, cv.height);
+  g.fillStyle = 'rgba(255,255,255,0.04)'; g.fillRect(0, 0, cv.width, cv.height);
+  let max = 4;
+  for (const v of songHist) max = Math.max(max, v);
+  g.fillStyle = 'rgba(201,138,255,0.85)';
+  const bw = cv.width / songHist.length;
+  for (let i = 0; i < songHist.length; i++) {
+    const h = songHist[i] / max * (cv.height - 4);
+    g.fillRect(i * bw, cv.height - h, bw - 0.5, h);
+  }
+}
+
+/* ============ 交互 ============ */
+const gate = document.getElementById('gate');
+gate.addEventListener('click', async () => {
+  initAudio();
+  await ctx.resume();
+  started = true;
+  gate.classList.add('gone');
+  for (const id of ['titleCard', 'ctrlCard', 'statCard'])
+    document.getElementById(id).style.display = '';
+});
+
+canvas.addEventListener('click', e => {
+  if (!started) return;
+  const x = e.clientX, y = e.clientY;
+  let hit = null, best = 20 * 20;
+  for (const f of flowers) {
+    const dx = f.x - x, dy = f.y - y, d2 = dx * dx + dy * dy;
+    if (d2 < best) { best = d2; hit = f; }
+  }
+  if (hit) {          // 移走：唱一声告别的低音
+    hit.degree = 0; hit.timbre = 0;
+    chime(hit);
+    flowers = flowers.filter(f => f !== hit);
+  } else if (y > H * 0.35) {
+    flowers.push(randomFlower(x, y));
+  }
+});
+
+function bindSlider(key) {
+  const input = document.getElementById('s-' + key);
+  const out = document.getElementById('o-' + key);
+  const show = () => out.textContent = (+params[key]).toFixed(key === 'echo' ? 2 : 1);
+  input.addEventListener('input', () => {
+    params[key] = +input.value;
+    if (key === 'echo') applySeasonAudio();
+    show();
+  });
+  show();
+}
+bindSlider('wind'); bindSlider('dens'); bindSlider('echo');
+
+for (let i = 0; i < 4; i++)
+  document.getElementById('m-' + i).addEventListener('click', () => {
+    seasonIdx = i;
+    for (let j = 0; j < 4; j++) document.getElementById('m-' + j).classList.toggle('on', j === i);
+    applySeasonAudio();
+  });
+
+const bPause = document.getElementById('b-pause');
+function togglePause() {
+  paused = !paused;
+  bPause.textContent = paused ? '▶' : '⏸';
+  bPause.classList.toggle('on', paused);
+  if (ctx) paused ? ctx.suspend() : ctx.resume();
+}
+bPause.addEventListener('click', togglePause);
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space' && e.target === document.body && started) { e.preventDefault(); togglePause(); }
+});
+
+document.getElementById('b-mute').addEventListener('click', function () {
+  muted = !muted;
+  if (master) master.gain.value = muted ? 0 : 0.9;
+  this.textContent = muted ? '🔇' : '🔊';
+  this.classList.toggle('on', muted);
+});
+
+/* 录音 */
+const bRec = document.getElementById('b-rec');
+bRec.addEventListener('click', () => {
+  if (!started || !window.MediaRecorder) { bRec.style.display = 'none'; return; }
+  if (recorder && recorder.state === 'recording') { recorder.stop(); return; }
+  recChunks = [];
+  recorder = new MediaRecorder(mediaDest.stream, { mimeType: 'audio/webm' });
+  recorder.ondataavailable = e => recChunks.push(e.data);
+  recorder.onstop = () => {
+    const blob = new Blob(recChunks, { type: 'audio/webm' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `echo-garden-${S().name}-${Math.floor(simT)}s.webm`;
+    a.click(); URL.revokeObjectURL(a.href);
+    bRec.textContent = '⏺ 录音'; bRec.classList.remove('on');
+  };
+  recorder.start();
+  bRec.textContent = '⏹ 停止'; bRec.classList.add('on');
+});
+
+document.getElementById('b-reset').addEventListener('click', replant);
+
+/* 存档 */
+function saveObj() {
+  return {
+    v: 1, seasonIdx, simT: Math.floor(simT), noteCount, phraseCount, params: { ...params },
+    flowers: flowers.map(f => [+f.x.toFixed(1), +f.y.toFixed(1), +f.hue.toFixed(4), f.degree,
+      +f.period.toFixed(2), +f.phase.toFixed(3), f.petal, +f.timbre.toFixed(3), +f.size.toFixed(2), +f.born.toFixed(1)]),
+  };
+}
+function loadObj(o) {
+  if (!o || o.v !== 1 || !Array.isArray(o.flowers)) throw new Error('存档格式不对');
+  seasonIdx = o.seasonIdx | 0;
+  Object.assign(params, o.params || {});
+  simT = o.simT || 0; noteCount = o.noteCount || 0; phraseCount = o.phraseCount || 0;
+  flowers = o.flowers.map(a => ({
+    x: a[0], y: a[1], hue: a[2], degree: a[3], period: a[4], phase: a[5],
+    petal: a[6], timbre: a[7], size: a[8], born: a[9], next: 0, pulse: 0,
+  }));
+  seeds = []; rings = [];
+  for (let j = 0; j < 4; j++) document.getElementById('m-' + j).classList.toggle('on', j === seasonIdx);
+  document.getElementById('s-wind').value = params.windFreq;
+  document.getElementById('s-dens').value = params.density;
+  document.getElementById('s-echo').value = params.echo;
+  applySeasonAudio();
+}
+document.getElementById('b-save').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(saveObj())], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `echo-garden-${Math.floor(simT)}s.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+});
+document.getElementById('b-load').addEventListener('click', () => document.getElementById('f-load').click());
+document.getElementById('f-load').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  file.text().then(t => { loadObj(JSON.parse(t)); e.target.value = ''; })
+    .catch(err => alert('载入失败：' + err.message));
+});
+
+/* ============ 文本状态 ============ */
+let txtAcc = 0, fps = 60;
+function updateText() {
+  document.getElementById('st-flowers').textContent = flowers.length;
+  document.getElementById('st-notes').textContent = noteCount;
+  document.getElementById('st-season').textContent = S().name;
+  document.getElementById('st-wind').textContent = windActive ? (windDir > 0 ? '东→西 ⟶' : '西→东 ⟵') : '平静';
+  document.getElementById('st-fps').textContent = `${Math.round(fps)} FPS`;
+}
+
+/* ============ 主循环 ============ */
+let last = performance.now();
+function frame(t) {
+  const dt = Math.min((t - last) / 1000, 0.05);
+  last = t;
+  if (dt > 0) fps += (1 / dt - fps) * 0.05;
+  if (!paused && started) step(dt, t);
+  draw(t);
+  if (started) {
+    noteAcc += 0; songAcc += dt;
+    const nowNotes = noteCount;
+    if (songAcc >= 0.5) {
+      songHist.push(nowNotes - noteAcc); noteAcc = nowNotes;
+      if (songHist.length > 120) songHist.shift();
+      songAcc = 0; drawSong();
+    }
+    txtAcc += dt;
+    if (txtAcc > 0.4) { txtAcc = 0; updateText(); }
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ============ 调试接口 ============ */
+window.__garden = {
+  stats: () => ({ flowers: flowers.length, notes: noteCount, phrases: phraseCount,
+                  season: S().name, simT: Math.floor(simT), wind: windActive }),
+  audio: () => ctx ? ctx.state : 'none',
+  rms: () => {
+    if (!ctx) return 0;
+    const buf = new Uint8Array(analyser.fftSize);
+    analyser.getByteTimeDomainData(buf);
+    let s = 0;
+    for (const v of buf) { const d = (v - 128) / 128; s += d * d; }
+    return Math.sqrt(s / buf.length);
+  },
+  clickGate: (x, y) => gate.dispatchEvent(new MouseEvent('click', { clientX: x, clientY: y })),
+  plant: (x, y) => flowers.push(randomFlower(x, y)),
+  flowers: () => flowers.length,
+  rec: () => ({ state: recorder ? recorder.state : 'none' }),
+  save: () => saveObj(), load: o => loadObj(o),
+  setSeason: i => { seasonIdx = i; applySeasonAudio(); },
+  forceWind: () => { windNext = 0; },
+};
+window.__errs = [];
+window.addEventListener('error', e => window.__errs.push(String(e.message)));
+
+/* ============ 启动 ============ */
+resize();
+replant();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
