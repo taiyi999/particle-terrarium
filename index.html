@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>粒子生态沙盘 · ZCode 的自由发挥</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #080a12;
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; }
+  #c { position: fixed; inset: 0; display: block; cursor: crosshair; }
+
+  .card { position: fixed; z-index: 10; background: rgba(13,16,28,.74);
+    border: 1px solid rgba(255,255,255,.09); border-radius: 14px;
+    padding: 13px 15px; color: #dfe4f2; font-size: 12.5px; line-height: 1.55;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 8px 30px rgba(0,0,0,.45); }
+
+  #titleCard { top: 16px; left: 16px; max-width: 350px; }
+  #titleCard h1 { font-size: 17px; font-weight: 600; letter-spacing: 2px;
+    background: linear-gradient(90deg,#ffd28a,#8ad1ff,#c9a1ff);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #titleCard .sub { color: #9aa4c0; margin-top: 5px; }
+  #titleCard .who { margin-top: 8px; color: #6f7a99; font-size: 11.5px; }
+  #titleCard .hint { margin-top: 8px; color: #aeb8d6; font-size: 11.5px; }
+  kbd { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18);
+    border-radius: 4px; padding: 0 5px; font-size: 10.5px; font-family: inherit; }
+
+  #controlCard { top: 16px; right: 16px; width: 248px;
+    max-height: calc(100vh - 32px); overflow-y: auto; }
+  #controlCard h2, #matrixCard h2, #legendCard h2 {
+    font-size: 12px; font-weight: 600; color: #8f9ab8;
+    letter-spacing: 1.5px; margin-bottom: 9px; }
+  .row { display: flex; align-items: center; gap: 8px; margin: 7px 0; }
+  .row label { flex: 0 0 74px; color: #c4cde6; }
+  .row output { flex: 0 0 44px; text-align: right; color: #8ad1ff;
+    font-variant-numeric: tabular-nums; font-size: 11.5px; }
+  input[type=range] { flex: 1; accent-color: #6fa8ff; height: 14px; cursor: pointer; }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  button { background: rgba(255,255,255,.08); color: #dfe4f2;
+    border: 1px solid rgba(255,255,255,.14); border-radius: 8px;
+    padding: 4px 10px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  button:hover { background: rgba(255,255,255,.16); }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .chips button { font-size: 11px; padding: 3px 8px; border-radius: 20px; }
+
+  #matrixCard { bottom: 16px; left: 16px; }
+  #matrixCard .tip { color: #7d87a6; font-size: 10.5px; margin-bottom: 8px; }
+  #matrix { display: grid; gap: 3px; }
+  #matrix .hd { display: flex; align-items: center; justify-content: center; }
+  #matrix .dot { width: 10px; height: 10px; border-radius: 50%; }
+  #matrix .corner { font-size: 9px; color: #6f7a99; white-space: nowrap; }
+  #matrix .cell { width: 30px; height: 24px; border-radius: 5px; cursor: ns-resize;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-variant-numeric: tabular-nums; color: rgba(255,255,255,.85);
+    border: 1px solid rgba(255,255,255,.07); user-select: none; touch-action: none; }
+  #matrix .cell:hover { border-color: rgba(255,255,255,.4); }
+
+  #legendCard { bottom: 16px; right: 16px; min-width: 168px; }
+  .sp { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+  .sp .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .sp .n { color: #c4cde6; }
+  .sp .cnt { margin-left: auto; color: #6f7a99; font-variant-numeric: tabular-nums; }
+  #fps { margin-top: 8px; color: #6f7a99; font-size: 11px;
+    font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="card" id="titleCard">
+  <h1>粒子生态沙盘</h1>
+  <div class="sub">简单的引力 × 简单的个体 = 自组织的秩序。<br>没有脚本，没有剧情，世界自己长出来。</div>
+  <div class="hint">在画面上<b>拖动鼠标</b>吸引它们，<kbd>Shift</kbd>+拖动排斥；<kbd>空格</kbd>暂停。<br>左下角矩阵就是物理定律——拖动格子改写它。</div>
+  <div class="who">—— ZCode 的自由发挥 · 2026-10-02</div>
+</div>
+
+<div class="card" id="controlCard">
+  <h2>宇宙常数</h2>
+  <div class="row"><label>粒子数量</label><input type="range" id="s-count" min="100" max="3000" step="50" value="900"><output id="o-count"></output></div>
+  <div class="row"><label>引力强度</label><input type="range" id="s-force" min="0" max="4" step="0.1" value="1.2"><output id="o-force"></output></div>
+  <div class="row"><label>作用半径</label><input type="range" id="s-rmax" min="30" max="150" step="5" value="80"><output id="o-rmax"></output></div>
+  <div class="row"><label>摩擦半衰期</label><input type="range" id="s-half" min="0.01" max="0.3" step="0.01" value="0.05"><output id="o-half"></output></div>
+  <div class="row"><label>核心斥力比</label><input type="range" id="s-beta" min="0.1" max="0.6" step="0.05" value="0.3"><output id="o-beta"></output></div>
+  <div class="row"><label>粒子大小</label><input type="range" id="s-size" min="6" max="24" step="1" value="12"><output id="o-size"></output></div>
+  <div class="row"><label>拖尾浓度</label><input type="range" id="s-trail" min="0.08" max="0.5" step="0.02" value="0.28"><output id="o-trail"></output></div>
+  <div class="btns">
+    <button id="b-random">🎲 随机规则</button>
+    <button id="b-pause">⏸ 暂停</button>
+    <button id="b-reset">↺ 重置粒子</button>
+  </div>
+  <div class="chips">
+    <button data-preset="cells">细胞</button>
+    <button data-preset="chain">猎食链</button>
+    <button data-preset="symbiosis">共生对</button>
+    <button data-preset="galaxy">星尘</button>
+  </div>
+</div>
+
+<div class="card" id="matrixCard">
+  <h2>物理定律（引力矩阵）</h2>
+  <div class="tip">行 = 这个物种的感受，列 = 对谁。拖动格子改值，双击归零。</div>
+  <div id="matrix"></div>
+</div>
+
+<div class="card" id="legendCard">
+  <h2>物种</h2>
+  <div id="legend"></div>
+  <div id="fps"></div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- 物种与调色 ---------- */
+const SPECIES = [
+  { name: '珊瑚', color: '#ff6b6b' },
+  { name: '琥珀', color: '#ffb84d' },
+  { name: '萤黄', color: '#ffe156' },
+  { name: '荧绿', color: '#6bff95' },
+  { name: '冰蓝', color: '#4dc9ff' },
+  { name: '紫晶', color: '#b56bff' },
+];
+const K = SPECIES.length;
+
+function hexRgb(h) {
+  const n = parseInt(h.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/* 预渲染发光精灵：每物种一张 32px 径向渐变 */
+const sprites = SPECIES.map(sp => {
+  const [r, g, b] = hexRgb(sp.color);
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 32;
+  const g2 = cv.getContext('2d');
+  const grad = g2.createRadialGradient(16, 16, 0, 16, 16, 16);
+  grad.addColorStop(0, 'rgba(255,255,255,0.95)');
+  grad.addColorStop(0.18, `rgba(${r},${g},${b},0.95)`);
+  grad.addColorStop(0.45, `rgba(${r},${g},${b},0.35)`);
+  grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+  g2.fillStyle = grad;
+  g2.fillRect(0, 0, 32, 32);
+  return cv;
+});
+
+/* ---------- 参数与状态 ---------- */
+const params = { count: 900, force: 1.2, rmax: 80, half: 0.05, beta: 0.3, size: 12, trail: 0.28 };
+let paused = false;
+
+const MAX = 3000;
+const px = new Float64Array(MAX), py = new Float64Array(MAX);
+const vx = new Float64Array(MAX), vy = new Float64Array(MAX);
+const type = new Uint8Array(MAX);
+let N = params.count;
+
+const A = new Float32Array(K * K);   // A[i*K+j] = 物种 i 对 j 的引力
+
+/* ---------- 画布 ---------- */
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0;
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#080a12'; ctx.fillRect(0, 0, W, H);
+  for (let i = 0; i < N; i++) {          // 环面世界：出界即绕回
+    px[i] = ((px[i] % W) + W) % W;
+    py[i] = ((py[i] % H) + H) % H;
+  }
+}
+window.addEventListener('resize', resize);
+
+/* ---------- 粒子 ---------- */
+function scatter() {
+  N = params.count;
+  for (let i = 0; i < N; i++) {
+    px[i] = Math.random() * W; py[i] = Math.random() * H;
+    vx[i] = 0; vy[i] = 0; type[i] = i % K;
+  }
+}
+
+/* ---------- 引力矩阵 ---------- */
+function randomMatrix() {
+  for (let i = 0; i < K * K; i++) A[i] = Math.random() * 2 - 1;
+  refreshMatrix();
+}
+const PRESETS = {
+  cells() {          // 强自聚 + 环形捕食偏置，长出“细胞”
+    for (let i = 0; i < K; i++) for (let j = 0; j < K; j++) {
+      let v;
+      if (i === j) v = 1.0;
+      else if (j === (i + 1) % K) v = 0.6;
+      else if (i === (j + 1) % K) v = -0.45;
+      else v = -0.15 + Math.random() * 0.1;
+      A[i * K + j] = v;
+    }
+  },
+  chain() {          // 六段猎食链：捕食者追，猎物逃
+    for (let i = 0; i < K; i++) for (let j = 0; j < K; j++) {
+      let v = 0;
+      if (i === j) v = 0.55;
+      else if (j === (i + 1) % K) v = 0.9;
+      else if (i === (j + 1) % K) v = -0.85;
+      A[i * K + j] = v;
+    }
+  },
+  symbiosis() {      // 三对共生，对外封闭
+    for (let i = 0; i < K; i++) for (let j = 0; j < K; j++) {
+      let v;
+      if (i === j) v = 0.7;
+      else if ((j === i + 1 && i % 2 === 0) || (i === j + 1 && j % 2 === 0)) v = 0.9;
+      else v = -0.3;
+      A[i * K + j] = v;
+    }
+  },
+  galaxy() {         // 全员温和相吸，聚成星云
+    for (let i = 0; i < K; i++) for (let j = 0; j < K; j++)
+      A[i * K + j] = i === j ? 0.9 : 0.25 + Math.random() * 0.2;
+  },
+};
+function applyPreset(name) {
+  (PRESETS[name] || randomMatrix)();
+  refreshMatrix();
+}
+
+/* ---------- 空间网格 ---------- */
+let gCols = 0, gRows = 0, head = new Int32Array(0);
+const next = new Int32Array(MAX);
+function ensureGrid() {
+  const c = Math.max(1, Math.floor(W / params.rmax));
+  const r = Math.max(1, Math.floor(H / params.rmax));
+  if (c !== gCols || r !== gRows) { gCols = c; gRows = r; head = new Int32Array(c * r); }
+}
+
+/* ---------- 鼠标 ---------- */
+const mouse = { active: false, x: 0, y: 0, repel: false };
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('pointerdown', e => {
+  mouse.active = true;
+  mouse.repel = e.shiftKey || e.button === 2;
+  mouse.x = e.clientX; mouse.y = e.clientY;
+});
+canvas.addEventListener('pointermove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+window.addEventListener('pointerup', () => { mouse.active = false; });
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); togglePause(); }
+});
+
+/* ---------- 物理步进 ---------- */
+function step(dt) {
+  ensureGrid();
+  const rm = params.rmax, rm2 = rm * rm;
+  const beta = rm * params.beta;
+  const denom = (rm - beta) || 1;
+  const cellW = W / gCols, cellH = H / gRows;
+  const fr = Math.pow(0.5, dt / params.half);
+  const R = 160, R2 = R * R;
+
+  head.fill(-1);
+  for (let i = 0; i < N; i++) {
+    const cx = Math.min(gCols - 1, (px[i] / cellW) | 0);
+    const cy = Math.min(gRows - 1, (py[i] / cellH) | 0);
+    const cell = cy * gCols + cx;
+    next[i] = head[cell]; head[cell] = i;
+  }
+
+  for (let i = 0; i < N; i++) {
+    const xi = px[i], yi = py[i], row = type[i] * K;
+    let fx = 0, fy = 0;
+    const cx = Math.min(gCols - 1, (xi / cellW) | 0);
+    const cy = Math.min(gRows - 1, (yi / cellH) | 0);
+    for (let oy = -1; oy <= 1; oy++) {
+      const yy = (cy + oy + gRows) % gRows;
+      for (let ox = -1; ox <= 1; ox++) {
+        const xx = (cx + ox + gCols) % gCols;
+        let j = head[yy * gCols + xx];
+        while (j !== -1) {
+          if (j !== i) {
+            let dx = px[j] - xi; if (dx > W / 2) dx -= W; else if (dx < -W / 2) dx += W;
+            let dy = py[j] - yi; if (dy > H / 2) dy -= H; else if (dy < -H / 2) dy += H;
+            const d2 = dx * dx + dy * dy;
+            if (d2 > 1e-6 && d2 < rm2) {
+              const d = Math.sqrt(d2);
+              let k = d < beta ? d / beta - 1
+                              : 1 - Math.abs(2 * d - rm - beta) / denom;
+              const f = k * A[row + type[j]];
+              fx += dx / d * f; fy += dy / d * f;
+            }
+          }
+          j = next[j];
+        }
+      }
+    }
+    let ax = fx * rm * params.force, ay = fy * rm * params.force;
+
+    if (mouse.active) {   // 鼠标引力/斥力，随距离衰减
+      let dx = mouse.x - xi, dy = mouse.y - yi;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > 1 && d2 < R2) {
+        const d = Math.sqrt(d2);
+        const s = (mouse.repel ? -1 : 1) * 1400 * (1 - d / R);
+        ax += dx / d * s; ay += dy / d * s;
+      }
+    }
+
+    vx[i] = (vx[i] + ax * dt) * fr;
+    vy[i] = (vy[i] + ay * dt) * fr;
+    const sp2 = vx[i] * vx[i] + vy[i] * vy[i];
+    if (sp2 > 4e6) { const s = 2000 / Math.sqrt(sp2); vx[i] *= s; vy[i] *= s; }
+
+    let X = px[i] + vx[i] * dt; X %= W; if (X < 0) X += W; px[i] = X;
+    let Y = py[i] + vy[i] * dt; Y %= H; if (Y < 0) Y += H; py[i] = Y;
+  }
+}
+
+/* ---------- 绘制 ---------- */
+function draw() {
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = `rgba(8,10,18,${params.trail})`;
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = 'lighter';
+  const s = params.size, h = s / 2;
+  for (let i = 0; i < N; i++) ctx.drawImage(sprites[type[i]], px[i] - h, py[i] - h, s, s);
+  if (mouse.active) {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = mouse.repel ? 'rgba(255,110,110,0.5)' : 'rgba(140,190,255,0.5)';
+    ctx.beginPath(); ctx.arc(mouse.x, mouse.y, 160, 0, Math.PI * 2); ctx.stroke();
+  }
+}
+
+/* ---------- 主循环 ---------- */
+let last = performance.now(), fps = 60;
+function frame(now) {
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  if (dt > 0) fps += (1 / dt - fps) * 0.05;
+  if (!paused) step(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+
+/* ---------- UI：滑杆 ---------- */
+function bindSlider(key, fmt) {
+  const input = document.getElementById('s-' + key);
+  const out = document.getElementById('o-' + key);
+  const show = () => { out.textContent = fmt(params[key]); };
+  input.addEventListener('input', () => {
+    params[key] = parseFloat(input.value);
+    if (key === 'count') setCount(params.count);
+    show();
+  });
+  show();
+}
+function setCount(n) {
+  n = Math.min(n, MAX);
+  if (n > N) for (let i = N; i < n; i++) {
+    px[i] = Math.random() * W; py[i] = Math.random() * H;
+    vx[i] = 0; vy[i] = 0; type[i] = i % K;
+  }
+  N = n;
+}
+bindSlider('count', v => v | 0);
+bindSlider('force', v => v.toFixed(1));
+bindSlider('rmax', v => v | 0);
+bindSlider('half', v => v.toFixed(2) + 's');
+bindSlider('beta', v => v.toFixed(2));
+bindSlider('size', v => v | 0);
+bindSlider('trail', v => v.toFixed(2));
+
+/* ---------- UI：按钮 ---------- */
+const bPause = document.getElementById('b-pause');
+function togglePause() {
+  paused = !paused;
+  bPause.textContent = paused ? '▶ 继续' : '⏸ 暂停';
+}
+bPause.addEventListener('click', togglePause);
+document.getElementById('b-random').addEventListener('click', randomMatrix);
+document.getElementById('b-reset').addEventListener('click', () => { scatter(); });
+document.querySelectorAll('[data-preset]').forEach(b =>
+  b.addEventListener('click', () => applyPreset(b.dataset.preset)));
+
+/* ---------- UI：矩阵 ---------- */
+const matrixEl = document.getElementById('matrix');
+matrixEl.style.gridTemplateColumns = `26px repeat(${K}, 30px)`;
+function cellBg(v) {
+  const a = 0.1 + 0.55 * Math.min(1, Math.abs(v));
+  return v >= 0 ? `rgba(76,220,130,${a})` : `rgba(255,84,84,${a})`;
+}
+function buildMatrix() {
+  matrixEl.innerHTML = '';
+  const corner = document.createElement('div');
+  corner.className = 'corner'; corner.textContent = '己↓ 彼→';
+  matrixEl.appendChild(corner);
+  for (let j = 0; j < K; j++) {
+    const d = document.createElement('div');
+    d.className = 'hd'; d.title = '对方：' + SPECIES[j].name;
+    d.innerHTML = `<div class="dot" style="background:${SPECIES[j].color}"></div>`;
+    matrixEl.appendChild(d);
+  }
+  for (let i = 0; i < K; i++) {
+    const d = document.createElement('div');
+    d.className = 'hd'; d.title = '自己：' + SPECIES[i].name;
+    d.innerHTML = `<div class="dot" style="background:${SPECIES[i].color}"></div>`;
+    matrixEl.appendChild(d);
+    for (let j = 0; j < K; j++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      const paint = () => {
+        const v = A[i * K + j];
+        cell.style.background = cellBg(v);
+        cell.textContent = v.toFixed(1);
+        cell.title = `${SPECIES[i].name} 对 ${SPECIES[j].name} = ${v.toFixed(2)}`;
+      };
+      let dragging = false, y0 = 0, v0 = 0;
+      cell.addEventListener('pointerdown', e => {
+        dragging = true; y0 = e.clientY; v0 = A[i * K + j];
+        cell.setPointerCapture(e.pointerId); e.preventDefault();
+      });
+      cell.addEventListener('pointermove', e => {
+        if (!dragging) return;
+        const v = Math.max(-1, Math.min(1, v0 + (y0 - e.clientY) / 80));
+        A[i * K + j] = v; paint();
+      });
+      cell.addEventListener('pointerup', () => { dragging = false; });
+      cell.addEventListener('dblclick', () => { A[i * K + j] = 0; paint(); });
+      cell._paint = paint;
+      matrixEl.appendChild(cell);
+    }
+  }
+  refreshMatrix();
+}
+function refreshMatrix() {
+  matrixEl.querySelectorAll('.cell').forEach(c => c._paint());
+}
+buildMatrix();
+
+/* ---------- UI：图例与统计 ---------- */
+const legendEl = document.getElementById('legend');
+const countEls = SPECIES.map(sp => {
+  const row = document.createElement('div');
+  row.className = 'sp';
+  row.innerHTML = `<div class="dot" style="background:${sp.color}"></div>
+    <span class="n">${sp.name}</span><span class="cnt">0</span>`;
+  legendEl.appendChild(row);
+  return row.querySelector('.cnt');
+});
+setInterval(() => {
+  const c = new Array(K).fill(0);
+  for (let i = 0; i < N; i++) c[type[i]]++;
+  for (let k = 0; k < K; k++) countEls[k].textContent = c[k];
+  document.getElementById('fps').textContent =
+    `${Math.round(fps)} FPS · ${N} 粒子 · ${paused ? '已暂停' : '运行中'}`;
+}, 400);
+
+/* ---------- 启动 ---------- */
+resize();
+randomMatrix();
+scatter();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
