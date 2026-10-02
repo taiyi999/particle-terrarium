@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>原始汤 · Primordial Soup — ZCode 的进化实验室</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #06080f;
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; }
+  #c { position: fixed; inset: 0; display: block; cursor: pointer; }
+
+  .card { position: fixed; z-index: 10; background: rgba(12,15,26,.76);
+    border: 1px solid rgba(255,255,255,.09); border-radius: 14px;
+    padding: 12px 14px; color: #dfe4f2; font-size: 12.5px; line-height: 1.5;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 8px 30px rgba(0,0,0,.45); }
+
+  #titleCard { top: 14px; left: 14px; max-width: 360px; }
+  #titleCard h1 { font-size: 17px; font-weight: 600; letter-spacing: 1.5px;
+    background: linear-gradient(90deg,#8affc1,#8ad1ff,#c9a1ff);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #titleCard .sub { color: #9aa4c0; margin-top: 4px; font-size: 12px; }
+  #titleCard .hint { margin-top: 7px; color: #7d87a6; font-size: 11px; }
+  #titleCard .who { margin-top: 6px; color: #5f6a88; font-size: 11px; }
+  kbd { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18);
+    border-radius: 4px; padding: 0 5px; font-size: 10.5px; font-family: inherit; }
+
+  #ctrlCard { top: 14px; right: 14px; width: 252px;
+    max-height: calc(100vh - 28px); overflow-y: auto; }
+  #ctrlCard h2, .card h2 { font-size: 11.5px; font-weight: 600; color: #8f9ab8;
+    letter-spacing: 1.5px; margin-bottom: 8px; }
+  .row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+  .row label { flex: 0 0 76px; color: #c4cde6; font-size: 12px; }
+  .row output { flex: 0 0 42px; text-align: right; color: #8affc1;
+    font-variant-numeric: tabular-nums; font-size: 11.5px; }
+  input[type=range] { flex: 1; accent-color: #6fff9f; height: 14px; cursor: pointer; }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  button { background: rgba(255,255,255,.08); color: #dfe4f2;
+    border: 1px solid rgba(255,255,255,.14); border-radius: 8px;
+    padding: 4px 10px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  button:hover { background: rgba(255,255,255,.16); }
+  button.on { background: rgba(111,255,159,.22); border-color: rgba(111,255,159,.5); }
+  #b-reset { margin-top: 2px; }
+
+  #statCard { bottom: 14px; right: 14px; width: 288px; }
+  .statline { color: #aeb8d6; font-size: 11.5px; margin: 2px 0;
+    font-variant-numeric: tabular-nums; }
+  .statline b { color: #e8edf8; font-weight: 600; }
+  #statCard canvas { display: block; margin: 6px 0 2px; }
+  .clabel { font-size: 10px; color: #6f7a99; margin-top: 6px; }
+  #warn { color: #ffb84d; font-size: 11px; min-height: 14px; margin-top: 4px; }
+
+  #specCard { bottom: 14px; left: 14px; width: 300px; }
+  .sp { display: flex; align-items: center; gap: 7px; margin: 3px 0; font-size: 11.5px; }
+  .sp .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .sp .nm { color: #c4cde6; }
+  .sp .cnt { margin-left: auto; color: #6f7a99; font-variant-numeric: tabular-nums; }
+  .sp .diet { flex: 0 0 46px; height: 6px; border-radius: 3px; overflow: hidden;
+    display: flex; background: #3a2f2f; }
+  .sp .diet i { display: block; height: 100%; background: #6fff9f; }
+
+  #inspCard { left: 14px; bottom: 172px; width: 300px; }
+  #inspCard.hidden { display: none; }
+  #inspCard .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  #inspCard .hd .dot { width: 12px; height: 12px; border-radius: 50%; }
+  #inspCard .hd .nm { font-weight: 600; color: #e8edf8; }
+  #inspCard .hd button { margin-left: auto; padding: 1px 8px; font-size: 11px; }
+  #cv-nn { display: block; margin: 4px 0; }
+  .gene { display: flex; align-items: center; gap: 7px; margin: 2.5px 0; font-size: 10.5px; }
+  .gene .gl { flex: 0 0 30px; color: #8f9ab8; }
+  .gene .bar { flex: 1; height: 7px; border-radius: 3.5px; background: rgba(255,255,255,.08); }
+  .gene .bar i { display: block; height: 100%; border-radius: 3.5px; background: #6fa8ff; }
+  .gene .gv { flex: 0 0 34px; text-align: right; color: #6f7a99;
+    font-variant-numeric: tabular-nums; }
+  #dietBar { background: linear-gradient(90deg,#2f4a35,#4a2f2f); }
+  #dietBar i { background: rgba(255,120,90,.9); }
+  #inspMeta { color: #7d87a6; font-size: 10.5px; margin-top: 4px;
+    font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="card" id="titleCard">
+  <h1>原始汤 · Primordial Soup</h1>
+  <div class="sub">没有设计，没有目标——只有食物、突变和时间。<br>看看生命自己能走多远。</div>
+  <div class="hint">点击生物查看它的基因与大脑 ｜ <kbd>空格</kbd>暂停 ｜ 右上角 1×/4×/16× 变速<br>绿色小点是植物，红褐色是遗骸——食性基因决定谁能消化谁。</div>
+  <div class="who">—— ZCode 的第二个世界 · 2026-10-02</div>
+</div>
+
+<div class="card" id="ctrlCard">
+  <h2>世界参数</h2>
+  <div class="row"><label>植物容量</label><input type="range" id="s-plant" min="200" max="2000" step="50" value="900"><output id="o-plant"></output></div>
+  <div class="row"><label>突变率</label><input type="range" id="s-mut" min="0" max="20" step="1" value="4"><output id="o-mut"></output></div>
+  <div class="row"><label>繁殖门槛</label><input type="range" id="s-repro" min="110" max="300" step="10" value="170"><output id="o-repro"></output></div>
+  <div class="btns">
+    <button id="b-pause">⏸</button>
+    <button id="b-1x" class="on">1×</button>
+    <button id="b-4x">4×</button>
+    <button id="b-16x">16×</button>
+    <button id="b-reset">↺ 重置世界</button>
+    <button id="b-save">💾 存档</button>
+    <button id="b-load">📂 载入</button>
+    <input type="file" id="f-load" accept=".json" style="display:none">
+  </div>
+</div>
+
+<div class="card" id="statCard">
+  <h2>演化档案</h2>
+  <div class="statline">生物 <b id="st-pop">0</b> ｜ 植物 <b id="st-plant">0</b> ｜ 肉 <b id="st-meat">0</b></div>
+  <div class="statline">最高世代 <b id="st-gen">0</b> ｜ 演化时长 <b id="st-time">0:00</b> ｜ <span id="st-fps"></span></div>
+  <div class="clabel">种群（绿＝生物，暗绿＝植物）</div>
+  <canvas id="cv-pop" width="258" height="56"></canvas>
+  <div class="clabel">平均性状（青＝速度 紫＝感知 橙＝尺寸）</div>
+  <canvas id="cv-trait" width="258" height="44"></canvas>
+  <div class="clabel">色相谱系（一条色带＝一个正在分化的种群）</div>
+  <canvas id="cv-hue" width="258" height="12"></canvas>
+  <div id="warn"></div>
+</div>
+
+<div class="card" id="specCard">
+  <h2>物种（按基因组距离聚类）</h2>
+  <div id="speciesList"></div>
+</div>
+
+<div class="card hidden" id="inspCard">
+  <div class="hd"><div class="dot" id="i-dot"></div><span class="nm" id="i-name"></span><button id="b-unsel">✕</button></div>
+  <canvas id="cv-nn" width="270" height="120"></canvas>
+  <div class="gene"><span class="gl">能量</span><div class="bar"><i id="g-en"></i></div><span class="gv" id="gv-en"></span></div>
+  <div class="gene"><span class="gl">尺寸</span><div class="bar"><i id="g-size"></i></div><span class="gv" id="gv-size"></span></div>
+  <div class="gene"><span class="gl">感知</span><div class="bar"><i id="g-sense"></i></div><span class="gv" id="gv-sense"></span></div>
+  <div class="gene"><span class="gl">速度</span><div class="bar"><i id="g-speed"></i></div><span class="gv" id="gv-speed"></span></div>
+  <div class="gene"><span class="gl">节律</span><div class="bar"><i id="g-osc"></i></div><span class="gv" id="gv-osc"></span></div>
+  <div class="gene"><span class="gl">食性</span><div class="bar" id="dietBar"><i id="g-diet"></i></div><span class="gv" id="gv-diet"></span></div>
+  <div id="inspMeta"></div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ============ 工具 ============ */
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+function gauss(m = 0, s = 1) {
+  let u = 0, v = 0;
+  while (!u) u = Math.random();
+  while (!v) v = Math.random();
+  return m + s * Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v);
+}
+const HUE_NAMES = ['赤','橙','金','黄绿','草绿','翠青','青','蔚蓝','靛蓝','紫','洋红','玫紫'];
+const hueName = h => HUE_NAMES[Math.floor(h * 12) % 12];
+const hueColor = h => `hsl(${Math.floor(h * 360)},78%,60%)`;
+
+/* ============ 基因组 ============ */
+const IN = 10, HID = 8, OUT = 3;                       // 神经网络 10×8×3
+const N_WIH = IN * HID, N_BH = HID, N_WHO = HID * OUT, N_BO = OUT;
+const N_NN = N_WIH + N_BH + N_WHO + N_BO;              // 115
+const N_GENE = 6 + N_NN;                               // 6 个性状 + 115 个权重
+const T_SIZE = 0, T_SENSE = 1, T_SPEED = 2, T_DIET = 3, T_HUE = 4, T_OSC = 5;
+
+function randomGenome() {
+  const g = new Float32Array(N_GENE);
+  for (let i = 0; i < 6; i++) g[i] = Math.random();
+  for (let i = 6; i < N_GENE; i++) g[i] = gauss(0, 0.5);
+  return g;
+}
+function mutate(g, rate) {          // rate = 每基因突变概率（0..0.2）
+  const out = new Float32Array(g);
+  for (let i = 0; i < N_GENE; i++) {
+    if (Math.random() < rate) {
+      const big = Math.random() < 0.06 ? 3 : 1;
+      let v = out[i] + gauss(0, 0.18 * big);
+      if (i < 6) v = clamp(v, 0, 1);       // 性状有界
+      out[i] = v;                           // 权重不设界
+    }
+  }
+  return out;
+}
+const traitsOf = g => ({
+  size: 4 + 8 * g[T_SIZE],
+  sense: 50 + 150 * g[T_SENSE],
+  speed: 0.25 + 1.05 * g[T_SPEED],       // 速度倍率
+  diet: g[T_DIET],
+  hue: g[T_HUE],
+  osc: 0.1 + 0.9 * g[T_OSC],
+});
+const plantEff = d => 1 - 0.75 * d;
+const meatEff = d => 0.25 + 0.75 * d;
+
+/* ============ 神经网络 ============ */
+function think(g, inp, out) {
+  const bh = 6 + N_WIH;
+  const who = bh + N_BH;
+  const bo = who + N_WHO;
+  const hid = NNBUF;
+  for (let j = 0; j < HID; j++) {
+    let s = g[bh + j];
+    for (let i = 0; i < IN; i++) s += inp[i] * g[6 + j * IN + i];
+    hid[j] = Math.tanh(s);
+  }
+  for (let k = 0; k < OUT; k++) {
+    let s = g[bo + k];
+    for (let j = 0; j < HID; j++) s += hid[j] * g[who + k * HID + j];
+    out[k] = Math.tanh(s);
+  }
+}
+const NNBUF = new Float32Array(HID);
+
+/* ============ 世界状态 ============ */
+const params = { plantTarget: 900, mutRate: 0.04, reproThreshold: 170 };
+let speedMul = 1, paused = false;
+const STEP = 1 / 30;
+
+let W = 0, H = 0;
+const MAXCRE = 600;
+let creatures = [];            // {g, x, y, dir, e, age, gen, id, reproCd, t(traits)}
+let foods = [];                // {x, y, e, meat, alive}
+let simTime = 0, nextId = 1, maxGen = 0, reseedCount = 0, biteCount = 0;
+let selected = null;
+let patchX = 0, patchY = 0, patchT = 0;
+
+const PLANT_E = 26, MEAT_E = 20;
+const PLANT_RATE = 55;         // 每模拟秒补充的植物数
+
+function spawnFood(x, y, meat, e) {
+  foods.push({ x: (x % W + W) % W, y: (y % H + H) % H, meat, e, alive: true, born: simTime });
+}
+function randomCreature(gen, g0) {
+  const g = g0 ? mutate(g0, params.mutRate) : randomGenome();
+  const t = traitsOf(g);
+  return {
+    g, t, id: nextId++,
+    x: Math.random() * W, y: Math.random() * H,
+    dir: Math.random() * TAU,
+    e: 100, age: 0, gen, reproCd: 2 + Math.random() * 3,
+  };
+}
+function resetWorld() {
+  creatures = []; foods = []; simTime = 0; nextId = 1; maxGen = 0;
+  reseedCount = 0; biteCount = 0; selected = null;
+  hideInspector();
+  hist = hist.map(() => null);
+  for (let i = 0; i < params.plantTarget; i++) spawnFood(Math.random() * W, Math.random() * H, false, PLANT_E);
+  for (let i = 0; i < 120; i++) creatures.push(randomCreature(0));
+}
+
+/* ============ 空间网格 ============ */
+const CELL = 200;
+let gCols = 1, gRows = 1;
+let headC = new Int32Array(0), headF = new Int32Array(0);
+const nextC = new Int32Array(MAXCRE);
+function ensureGrids() {
+  const c = Math.max(1, Math.ceil(W / CELL)), r = Math.max(1, Math.ceil(H / CELL));
+  if (c !== gCols || r !== gRows) { gCols = c; gRows = r; }
+  if (headC.length !== gCols * gRows) headC = new Int32Array(gCols * gRows);
+  if (headF.length !== gCols * gRows) headF = new Int32Array(gCols * gRows);
+}
+const cellX = x => clamp((x / W * gCols) | 0, 0, gCols - 1);
+const cellY = y => clamp((y / H * gRows) | 0, 0, gRows - 1);
+const wrapD = (d, span) => d > span / 2 ? d - span : d < -span / 2 ? d + span : d;
+
+/* ============ 模拟步进 ============ */
+const inp = new Float32Array(IN);
+const outp = new Float32Array(OUT);
+
+function stepSim(dt) {
+  simTime += dt;
+  ensureGrids();
+
+  // 植物再生（斑块式：植被成片生长，3 秒换一片）；肉 30 秒后腐烂
+  let plants = 0;
+  for (const f of foods) {
+    if (!f.alive) continue;
+    if (f.meat) { if (simTime - f.born > 30) f.alive = false; }
+    else plants++;
+  }
+  patchT -= dt;
+  if (patchT <= 0) { patchX = Math.random() * W; patchY = Math.random() * H; patchT = 3; }
+  let budget = Math.min(PLANT_RATE * dt, params.plantTarget - plants);
+  while (budget > 0 && foods.length < 4500) {
+    spawnFood(patchX + gauss(0, 130), patchY + gauss(0, 130), false, PLANT_E);
+    budget -= 1;
+  }
+
+  // 网格
+  headC.fill(-1); headF.fill(-1);
+  for (let i = 0; i < foods.length; i++) {
+    const f = foods[i];
+    const cell = cellY(f.y) * gCols + cellX(f.x);
+    f._n = headF[cell]; f._h = i; headF[cell] = i;
+  }
+  for (let i = 0; i < creatures.length; i++) {
+    const c = creatures[i];
+    const cell = cellY(c.y) * gCols + cellX(c.x);
+    c._n = headC[cell]; c._h = i; headC[cell] = i;
+  }
+
+  const newborns = [];
+  for (const c of creatures) {
+    const t = c.t;
+
+    /* --- 感知 --- */
+    let fBest = 1e9, fBX = 0, fBY = 0;
+    const cx = cellX(c.x), cy = cellY(c.y);
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+      const xx = (cx + ox + gCols) % gCols, yy = (cy + oy + gRows) % gRows;
+      let fi = headF[yy * gCols + xx];
+      while (fi !== -1) {
+        const f = foods[fi];
+        if (f.alive) {
+          const dx = wrapD(f.x - c.x, W), dy = wrapD(f.y - c.y, H);
+          const d2 = dx * dx + dy * dy;
+          if (d2 < fBest) { fBest = d2; fBX = dx; fBY = dy; }
+        }
+        fi = f._n;
+      }
+    }
+    const foodD = fBest > 1e9 ? 0 : Math.sqrt(fBest);
+
+    let cBest = 1e9, cBX = 0, cBY = 0, cOther = null;
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+      const xx = (cx + ox + gCols) % gCols, yy = (cy + oy + gRows) % gRows;
+      let ci = headC[yy * gCols + xx];
+      while (ci !== -1) {
+        const o = creatures[ci];
+        if (o !== c) {
+          const dx = wrapD(o.x - c.x, W), dy = wrapD(o.y - c.y, H);
+          const d2 = dx * dx + dy * dy;
+          if (d2 < cBest) { cBest = d2; cBX = dx; cBY = dy; cOther = o; }
+        }
+        ci = o._n;
+      }
+    }
+    const creD = cBest > 1e9 ? 0 : Math.sqrt(cBest);
+    const sense = t.sense;
+
+    /* --- 思考 --- */
+    inp[0] = foodD ? clamp(1 - foodD / sense, 0, 1) : 0;
+    if (foodD) {
+      const rel = Math.atan2(fBY, fBX) - c.dir;
+      inp[1] = Math.sin(rel); inp[2] = Math.cos(rel);
+    } else { inp[1] = 0; inp[2] = 0; }
+    inp[3] = creD ? clamp(1 - creD / sense, 0, 1) : 0;
+    if (creD) {
+      const rel = Math.atan2(cBY, cBX) - c.dir;
+      inp[4] = Math.sin(rel); inp[5] = Math.cos(rel);
+    } else { inp[4] = 0; inp[5] = 0; }
+    inp[6] = cOther ? clamp((cOther.t.size - t.size) / 8, -1, 1) : 0;
+    inp[7] = clamp(c.e / params.reproThreshold, 0, 1);
+    inp[8] = Math.sin(c.age * TAU * t.osc);
+    inp[9] = 1;
+    think(c.g, inp, outp);
+
+    /* --- 移动 --- */
+    c.dir += outp[0] * 3.2 * dt;
+    const spd = (0.5 + 0.5 * outp[1]) * t.speed * 60;
+    c.x = ((c.x + Math.cos(c.dir) * spd * dt) % W + W) % W;
+    c.y = ((c.y + Math.sin(c.dir) * spd * dt) % H + H) % H;
+    c.age += dt;
+    c.reproCd -= dt;
+
+    /* --- 进食（饱食不再进食，避免浪费植物） --- */
+    const pe = plantEff(t.diet), me = meatEff(t.diet);
+    if (c.e < params.reproThreshold * 1.15) {
+      const rr = (t.size + 3) * (t.size + 3);
+      const cx2 = cellX(c.x), cy2 = cellY(c.y);
+      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+        const xx = (cx2 + ox + gCols) % gCols, yy = (cy2 + oy + gRows) % gRows;
+        let fi = headF[yy * gCols + xx];
+        while (fi !== -1) {
+          const f = foods[fi];
+          if (f.alive && (f.meat || simTime - f.born > 6)) {
+            const dx = wrapD(f.x - c.x, W), dy = wrapD(f.y - c.y, H);
+            if (dx * dx + dy * dy < rr) {
+              c.e += f.e * (f.meat ? me : pe);
+              f.alive = false;
+            }
+          }
+          fi = f._n;
+        }
+      }
+    }
+
+    /* --- 撕咬 --- */
+    if (outp[2] > 0.3 && cOther && creD < t.size + cOther.t.size + 2) {
+      const bite = 26 * dt;
+      const gain = Math.min(cOther.e, bite) * me;
+      cOther.e -= bite; c.e += gain; biteCount++;
+    }
+
+    /* --- 代谢 --- */
+    const u = spd / (t.speed * 60);
+    c.e -= dt * (0.55 + 1.7 * u) * (0.5 + 0.5 * t.size / 12) * 2.2;
+    c.e -= dt * 0.6;
+
+    /* --- 繁殖 --- */
+    if (c.e > params.reproThreshold && c.reproCd <= 0 && creatures.length + newborns.length < MAXCRE) {
+      c.e = params.reproThreshold * 0.42;
+      const child = randomCreature(c.gen + 1, c.g);
+      child.x = ((c.x + gauss(0, t.size * 2 + 6)) % W + W) % W;
+      child.y = ((c.y + gauss(0, t.size * 2 + 6)) % H + H) % H;
+      child.e = params.reproThreshold * 0.42;
+      c.reproCd = 4;
+      if (child.gen > maxGen) maxGen = child.gen;
+      newborns.push(child);
+    }
+
+    /* --- 死亡 --- */
+    if (c.e <= 0 || c.age > 150) {
+      c.dead = true;
+      const n = 2 + (Math.random() * 2 | 0);
+      for (let k = 0; k < n; k++)
+        spawnFood(c.x + gauss(0, 5), c.y + gauss(0, 5), true, MEAT_E);
+      if (selected === c) { selected = null; hideInspector(); }
+    }
+
+    /* --- NaN 防护 --- */
+    if (!isFinite(c.x) || !isFinite(c.y) || !isFinite(c.e)) {
+      c.x = Math.random() * W; c.y = Math.random() * H;
+      c.e = 80; c.dir = Math.random() * TAU;
+    }
+  }
+
+  if (newborns.length) creatures.push(...newborns);
+  if (creatures.some(c => c.dead)) creatures = creatures.filter(c => !c.dead);
+  if (foods.some(f => !f.alive)) foods = foods.filter(f => f.alive);
+
+  /* --- 种群保险：快死绝时补苗 --- */
+  if (creatures.length < 12) {
+    const donor = creatures.length ? creatures[(Math.random() * creatures.length) | 0].g : null;
+    for (let i = 0; i < 24; i++) creatures.push(randomCreature(0, donor));
+    reseedCount++;
+  }
+}
+
+/* ============ 物种聚类 ============ */
+let species = [], specTimer = 0;
+function geneDist(a, b) {
+  let s = 0;
+  for (let i = 0; i < 6; i++) { const d = a[i] - b[i]; s += d * d; }
+  const hd = a[T_HUE] - b[T_HUE];
+  s += hd * hd * 3;
+  return Math.sqrt(s);
+}
+function clusterSpecies() {
+  const list = creatures.slice().sort(() => Math.random() - 0.5);
+  const reps = [];   // {g, count, dietSum, speedSum, hue, genMin}
+  for (const c of list) {
+    let hit = null;
+    for (const r of reps) if (geneDist(c.g, r.g) < 0.42) { hit = r; break; }
+    if (hit) {
+      hit.count++; hit.dietSum += c.t.diet; hit.speedSum += c.t.speed;
+      hit.genMin = Math.min(hit.genMin, c.gen);
+    } else {
+      reps.push({ g: c.g, count: 1, dietSum: c.t.diet, speedSum: c.t.speed, genMin: c.gen });
+    }
+  }
+  reps.sort((a, b) => b.count - a.count);
+  species = reps.slice(0, 6);
+}
+function renderSpecies() {
+  const el = document.getElementById('speciesList');
+  el.innerHTML = '';
+  for (const r of species) {
+    const hue = r.g[T_HUE];
+    const meat = r.dietSum / r.count;
+    const row = document.createElement('div');
+    row.className = 'sp';
+    row.title = `起源世代 ${r.genMin} ｜ 平均速度 ${r.speedSum / r.count > 0.75 ? '高' : r.speedSum / r.count > 0.5 ? '中' : '低'}`;
+    row.innerHTML = `<div class="dot" style="background:${hueColor(hue)}"></div>
+      <span class="nm">${hueName(hue)}系 · ${r.count}</span>
+      <div class="diet"><i style="width:${Math.round((1 - meat) * 100)}%"></i></div>
+      <span class="cnt">${Math.round(meat * 100)}%🥩</span>`;
+    el.appendChild(row);
+  }
+  if (!species.length) el.innerHTML = '<div class="sp"><span class="nm">（空世界）</span></div>';
+}
+
+/* ============ 画布 ============ */
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#06080f'; ctx.fillRect(0, 0, W, H);
+}
+window.addEventListener('resize', resize);
+
+function draw() {
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = 'rgba(6,8,15,0.55)';
+  ctx.fillRect(0, 0, W, H);
+
+  for (const f of foods) {
+    if (f.alive && !f.meat) {           // 幼苗小而暗，成熟后饱满鲜绿
+      const g2 = clamp((simTime - f.born) / 6, 0, 1);
+      const s = 1.2 + 1.4 * g2;
+      ctx.fillStyle = `rgba(80,200,120,${0.35 + 0.65 * g2})`;
+      ctx.fillRect(f.x - s / 2, f.y - s / 2, s, s);
+    } else if (f.alive) {
+      ctx.fillStyle = '#8a5a3a';
+      ctx.fillRect(f.x - 1.2, f.y - 1.2, 2.6, 2.6);
+    }
+  }
+
+  for (const c of creatures) {
+    const r = c.t.size;
+    ctx.fillStyle = hueColor(c.t.hue);
+    ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(c.x, c.y);
+    ctx.lineTo(c.x + Math.cos(c.dir) * (r + 2.5), c.y + Math.sin(c.dir) * (r + 2.5));
+    ctx.stroke();
+  }
+  if (selected) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(selected.x, selected.y, selected.t.size + 4, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+    ctx.beginPath(); ctx.arc(selected.x, selected.y, selected.t.sense, 0, TAU); ctx.stroke();
+  }
+}
+
+/* ============ 统计与图表 ============ */
+let hist = new Array(240).fill(null);
+let sampleAcc = 0;
+function sample() {
+  let pop = creatures.length, plants = 0, meats = 0, sp = 0, sn = 0, sz = 0;
+  for (const c of creatures) { sp += c.t.speed; sn += c.t.sense; sz += c.t.size; }
+  for (const f of foods) f.meat ? meats++ : plants++;
+  const n = creatures.length || 1;
+  hist.push({ pop, plants, meats,
+    speed: (sp / n - 0.25) / 1.05, sense: (sn / n - 50) / 150, size: (sz / n - 4) / 8 });
+  if (hist.length > 240) hist.shift();
+}
+function drawLine(cv, series, colors) {
+  const g = cv.getContext('2d');
+  g.clearRect(0, 0, cv.width, cv.height);
+  g.fillStyle = 'rgba(255,255,255,0.04)'; g.fillRect(0, 0, cv.width, cv.height);
+  let max = 10;
+  for (const row of hist) if (row) for (const k of series) max = Math.max(max, row[k]);
+  const n = hist.length;
+  series.forEach((k, si) => {
+    g.strokeStyle = colors[si]; g.lineWidth = 1.4; g.beginPath();
+    let started = false;
+    for (let i = 0; i < n; i++) {
+      const row = hist[i]; if (!row) continue;
+      const x = i / (n - 1) * cv.width;
+      const y = cv.height - row[k] / max * (cv.height - 4) - 2;
+      if (!started) { g.moveTo(x, y); started = true; } else g.lineTo(x, y);
+    }
+    g.stroke();
+  });
+}
+function drawHue() {
+  const cv = document.getElementById('cv-hue');
+  const g = cv.getContext('2d');
+  g.clearRect(0, 0, cv.width, cv.height);
+  const bins = new Float32Array(48);
+  for (const c of creatures) bins[Math.floor(c.t.hue * 48) % 48]++;
+  let max = 1;
+  for (const b of bins) max = Math.max(max, b);
+  const bw = cv.width / 48;
+  for (let i = 0; i < 48; i++) {
+    g.fillStyle = `hsl(${i / 48 * 360},75%,55%)`;
+    const h = bins[i] / max * cv.height;
+    g.fillRect(i * bw, cv.height - h, bw - 0.5, h);
+  }
+}
+let txtAcc = 0;
+function updateText() {
+  let plants = 0, meats = 0;
+  for (const f of foods) f.meat ? meats++ : plants++;
+  document.getElementById('st-pop').textContent = creatures.length;
+  document.getElementById('st-plant').textContent = plants;
+  document.getElementById('st-meat').textContent = meats;
+  document.getElementById('st-gen').textContent = maxGen;
+  const m = Math.floor(simTime / 60), s = Math.floor(simTime % 60);
+  document.getElementById('st-time').textContent = `${m}:${String(s).padStart(2, '0')}`;
+  document.getElementById('st-fps').textContent = `${Math.round(fps)} FPS`;
+  document.getElementById('warn').textContent = reseedCount ? `⚠ 种群曾濒危，自动补苗 ${reseedCount} 次` : '';
+}
+
+/* ============ 检视器 ============ */
+const inspCard = document.getElementById('inspCard');
+function hideInspector() { inspCard.classList.add('hidden'); selected = null; }
+document.getElementById('b-unsel').addEventListener('click', hideInspector);
+
+function selectAt(x, y) {
+  let best = null, bestD = 16 * 16;
+  for (const c of creatures) {
+    const dx = wrapD(c.x - x, W), dy = wrapD(c.y - y, H);
+    const d2 = dx * dx + dy * dy;
+    if (d2 < bestD) { bestD = d2; best = c; }
+  }
+  selected = best;
+  inspCard.classList.toggle('hidden', !best);
+  if (best) updateInspector();
+}
+const setBar = (id, frac) => { document.getElementById(id).style.width = `${clamp(frac * 100, 0, 100)}%`; };
+function updateInspector() {
+  const c = selected; if (!c) return;
+  const t = c.t;
+  document.getElementById('i-dot').style.background = hueColor(t.hue);
+  document.getElementById('i-name').textContent = `${hueName(t.hue)}系个体 #${c.id}`;
+  setBar('g-en', c.e / (params.reproThreshold * 1.4));
+  document.getElementById('gv-en').textContent = Math.max(0, c.e | 0);
+  setBar('g-size', (t.size - 4) / 8);
+  document.getElementById('gv-size').textContent = t.size.toFixed(1);
+  setBar('g-sense', (t.sense - 50) / 150);
+  document.getElementById('gv-sense').textContent = t.sense.toFixed(0);
+  setBar('g-speed', (t.speed - 0.25) / 1.05);
+  document.getElementById('gv-speed').textContent = (t.speed * 60).toFixed(0);
+  setBar('g-osc', (t.osc - 0.1) / 0.9);
+  document.getElementById('gv-osc').textContent = t.osc.toFixed(2);
+  setBar('g-diet', t.diet);
+  document.getElementById('gv-diet').textContent = t.diet > 0.5 ? '偏肉' : '偏草';
+  document.getElementById('inspMeta').textContent =
+    `第 ${c.gen} 代 ｜ 年龄 ${c.age.toFixed(0)}s ｜ 基因 ${N_GENE} 个 ｜ 消化: 草${Math.round(plantEff(t.diet) * 100)}% 肉${Math.round(meatEff(t.diet) * 100)}%`;
+  drawNN(c.g);
+}
+function drawNN(g) {
+  const cv = document.getElementById('cv-nn');
+  const gr = cv.getContext('2d');
+  gr.clearRect(0, 0, cv.width, cv.height);
+  const bh = 6 + N_WIH, who = bh + N_BH, bo = who + N_WHO;
+  const ix = 26, hx = cv.width / 2, ox = cv.width - 26;
+  const iy = i => 10 + i * (cv.height - 20) / (IN - 1);
+  const hy = j => 14 + j * (cv.height - 28) / (HID - 1);
+  const oy = k => 26 + k * (cv.height - 52) / (OUT - 1);
+  for (let j = 0; j < HID; j++) for (let i = 0; i < IN; i++) {
+    const w = g[6 + j * IN + i];
+    if (Math.abs(w) < 0.2) continue;
+    gr.strokeStyle = w > 0 ? `rgba(111,255,159,${Math.min(0.7, Math.abs(w) * 0.5)})`
+                           : `rgba(255,110,110,${Math.min(0.7, Math.abs(w) * 0.5)})`;
+    gr.beginPath(); gr.moveTo(ix, iy(i)); gr.lineTo(hx, hy(j)); gr.stroke();
+  }
+  for (let k = 0; k < OUT; k++) for (let j = 0; j < HID; j++) {
+    const w = g[who + k * HID + j];
+    if (Math.abs(w) < 0.2) continue;
+    gr.strokeStyle = w > 0 ? `rgba(111,255,159,${Math.min(0.7, Math.abs(w) * 0.5)})`
+                           : `rgba(255,110,110,${Math.min(0.7, Math.abs(w) * 0.5)})`;
+    gr.beginPath(); gr.moveTo(hx, hy(j)); gr.lineTo(ox, oy(k)); gr.stroke();
+  }
+  gr.fillStyle = '#9aa4c0';
+  for (let i = 0; i < IN; i++) { gr.beginPath(); gr.arc(ix, iy(i), 2.5, 0, TAU); gr.fill(); }
+  for (let j = 0; j < HID; j++) { gr.beginPath(); gr.arc(hx, hy(j), 2.5, 0, TAU); gr.fill(); }
+  gr.fillStyle = '#e8edf8';
+  for (let k = 0; k < OUT; k++) { gr.beginPath(); gr.arc(ox, oy(k), 3, 0, TAU); gr.fill(); }
+  gr.fillStyle = '#5f6a88'; gr.font = '9px sans-serif';
+  gr.fillText('感知', 8, 8); gr.fillText('脑', hx - 6, 8); gr.fillText('行动', ox - 10, 8);
+}
+
+/* ============ 存档 ============ */
+function saveObj() {
+  return {
+    v: 1, simTime, maxGen, reseedCount,
+    params: { ...params },
+    creatures: creatures.map(c => ({ g: Array.from(c.g), e: c.e, x: c.x, y: c.y, d: c.dir, age: c.age, gen: c.gen })),
+    foods: foods.map(f => [+f.x.toFixed(1), +f.y.toFixed(1), f.e, f.meat ? 1 : 0]),
+  };
+}
+function loadObj(o) {
+  if (!o || o.v !== 1 || !Array.isArray(o.creatures)) throw new Error('存档格式不对');
+  Object.assign(params, o.params || {});
+  syncParams();
+  simTime = o.simTime || 0; maxGen = o.maxGen || 0; reseedCount = o.reseedCount || 0;
+  creatures = o.creatures.map(s => {
+    const g = new Float32Array(s.g);
+    return { g, t: traitsOf(g), id: nextId++, x: s.x, y: s.y, dir: s.d,
+             e: s.e, age: s.age, gen: s.gen, reproCd: 1 + Math.random() * 2 };
+  });
+  foods = o.foods.map(a => ({ x: a[0], y: a[1], e: a[2], meat: !!a[3], alive: true }));
+  hideInspector();
+}
+document.getElementById('b-save').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(saveObj())], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `primordial-soup-${Math.floor(simTime)}s.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+});
+document.getElementById('b-load').addEventListener('click', () => document.getElementById('f-load').click());
+document.getElementById('f-load').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  file.text().then(txt => { loadObj(JSON.parse(txt)); e.target.value = ''; })
+    .catch(err => alert('载入失败：' + err.message));
+});
+
+/* ============ UI 绑定 ============ */
+function bindSlider(key, suffix) {
+  const input = document.getElementById('s-' + key);
+  const out = document.getElementById('o-' + key);
+  const show = () => { out.textContent = fmtVal(key) + suffix; };
+  const fmtVal = k => k === 'mut' ? params.mutRate * 100 | 0
+                    : k === 'repro' ? params.reproThreshold | 0
+                    : params.plantTarget | 0;
+  input.addEventListener('input', () => {
+    if (key === 'plant') params.plantTarget = +input.value;
+    if (key === 'mut') params.mutRate = +input.value / 100;
+    if (key === 'repro') params.reproThreshold = +input.value;
+    show();
+  });
+  show();
+}
+function syncParams() {
+  document.getElementById('s-plant').value = params.plantTarget;
+  document.getElementById('s-mut').value = params.mutRate * 100;
+  document.getElementById('s-repro').value = params.reproThreshold;
+  document.getElementById('o-plant').textContent = params.plantTarget;
+  document.getElementById('o-mut').textContent = Math.round(params.mutRate * 100) + '%';
+  document.getElementById('o-repro').textContent = params.reproThreshold;
+}
+bindSlider('plant', '');
+bindSlider('mut', '%');
+bindSlider('repro', '');
+
+const bPause = document.getElementById('b-pause');
+function setSpeed(mul) {
+  speedMul = mul;
+  paused = mul === 0;
+  bPause.textContent = paused ? '▶' : '⏸';
+  bPause.classList.toggle('on', paused);
+  for (const [id, v] of [['b-1x', 1], ['b-4x', 4], ['b-16x', 16]])
+    document.getElementById(id).classList.toggle('on', !paused && v === mul);
+}
+function togglePause() { setSpeed(paused ? 1 : 0); }
+bPause.addEventListener('click', togglePause);
+document.getElementById('b-1x').addEventListener('click', () => setSpeed(1));
+document.getElementById('b-4x').addEventListener('click', () => setSpeed(4));
+document.getElementById('b-16x').addEventListener('click', () => setSpeed(16));
+document.getElementById('b-reset').addEventListener('click', resetWorld);
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); togglePause(); }
+});
+canvas.addEventListener('click', e => selectAt(e.clientX, e.clientY));
+
+/* ============ 主循环 ============ */
+let last = performance.now(), fps = 60, acc = 0;
+function frame(now) {
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  if (dt > 0) fps += (1 / dt - fps) * 0.05;
+
+  if (!paused) {
+    acc += dt * speedMul;
+    let steps = 0;
+    while (acc >= STEP && steps < 10) { stepSim(STEP); acc -= STEP; steps++; }
+    if (acc > STEP * 10) acc = 0;
+    if (steps > 0) {
+      sampleAcc += steps * STEP;
+      if (sampleAcc >= 0.5) { sampleAcc = 0; sample(); }
+      specTimer += steps * STEP;
+      if (specTimer >= 2) { specTimer = 0; clusterSpecies(); renderSpecies(); }
+      if (selected) updateInspector();
+    }
+  }
+  draw();
+  drawLine(document.getElementById('cv-pop'), ['pop', 'plants'], ['#6fff9f', '#2e6e4c']);
+  drawLine(document.getElementById('cv-trait'), ['speed', 'sense', 'size'], ['#4dc9ff', '#b56bff', '#ffb84d']);
+  drawHue();
+  txtAcc += dt;
+  if (txtAcc > 0.4) { txtAcc = 0; updateText(); }
+  requestAnimationFrame(frame);
+}
+
+/* ============ 调试接口 ============ */
+window.__soup = {
+  time: () => simTime, pop: () => creatures.length,
+  maxGen: () => maxGen,
+  stats: () => ({ pop: creatures.length, foods: foods.length, simTime, maxGen, reseedCount }),
+  nanScan: () => creatures.filter(c => !isFinite(c.x + c.y + c.e)).length,
+  setSpeed: n => setSpeed(n),
+  step: n => { for (let i = 0; i < n; i++) stepSim(STEP); },
+  selectAt: (x, y) => { selectAt(x, y); return selected ? selected.id : null; },
+  save: () => saveObj(), load: o => loadObj(o),
+  errs: () => window.__errs,
+};
+window.__errs = [];
+window.addEventListener('error', e => window.__errs.push(String(e.message)));
+
+/* ============ 启动 ============ */
+resize();
+resetWorld();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
