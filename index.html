@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>拾星录 · A Chronicle of Stars — ZCode 的第四个世界</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #03050c;
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; }
+  #c { position: fixed; inset: 0; display: block; cursor: grab; }
+  #c.drag { cursor: grabbing; }
+
+  .card { position: fixed; z-index: 10; background: rgba(8,11,22,.74);
+    border: 1px solid rgba(255,255,255,.09); border-radius: 14px;
+    padding: 12px 14px; color: #dfe4f2; font-size: 12.5px; line-height: 1.6;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+
+  #titleCard { top: 14px; left: 14px; max-width: 342px; }
+  #titleCard h1 { font-size: 17px; font-weight: 600; letter-spacing: 2px;
+    background: linear-gradient(90deg,#ffe9b8,#8ad1ff,#c9a1ff);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #titleCard .sub { color: #9aa4c0; margin-top: 4px; font-size: 12px; }
+  #titleCard .hint { margin-top: 7px; color: #7d87a6; font-size: 11px; }
+  #titleCard .who { margin-top: 6px; color: #5f6a88; font-size: 11px; }
+  #titleCard .coord { margin-top: 5px; color: #8f9ab8; font-size: 11px;
+    font-variant-numeric: tabular-nums; }
+
+  #logCard { top: 14px; right: 14px; width: 262px;
+    max-height: calc(100vh - 28px); overflow-y: auto; }
+  #logCard h2 { font-size: 11.5px; font-weight: 600; color: #8f9ab8;
+    letter-spacing: 1.5px; margin-bottom: 8px; }
+  .logrow { display: flex; align-items: center; gap: 7px; margin: 3px 0;
+    font-size: 11.5px; cursor: pointer; padding: 2px 4px; border-radius: 6px; }
+  .logrow:hover { background: rgba(255,255,255,.07); }
+  .logrow .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .logrow .nm { color: #c4cde6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .logrow .dist { margin-left: auto; color: #5f6a88; font-size: 10px; flex: none;
+    font-variant-numeric: tabular-nums; }
+  #logEmpty { color: #5f6a88; font-size: 11px; }
+
+  #cardBox { display: none; position: fixed; z-index: 20; left: 50%; top: 50%;
+    transform: translate(-50%, -50%); width: min(480px, calc(100vw - 32px));
+    max-height: calc(100vh - 60px); overflow-y: auto; }
+  #cardBox h3 { font-size: 16px; color: #ffe9b8; font-weight: 600;
+    letter-spacing: 1px; margin-bottom: 2px; }
+  #cardBox .cls { color: #8f9ab8; font-size: 11px; margin-bottom: 8px; }
+  #cardBox .lore { font-size: 13.5px; color: #e8edf8; line-height: 1.9;
+    margin: 10px 0; padding: 10px 12px; border-left: 2px solid rgba(255,233,184,.5);
+    background: rgba(255,233,184,.05); border-radius: 0 8px 8px 0; }
+  #cardBox .planets { margin-top: 8px; }
+  #cardBox .pl { display: flex; gap: 8px; align-items: baseline; margin: 3px 0; font-size: 12px; }
+  #cardBox .pl .pn { color: #c4cde6; flex: none; }
+  #cardBox .pl .pt { color: #8f9ab8; }
+  #cardBox .foot { margin-top: 10px; color: #5f6a88; font-size: 10.5px;
+    display: flex; justify-content: space-between; align-items: center; }
+  #cardBox .foot button { font-size: 11px; padding: 2px 10px; }
+  .eraTag { display: inline-block; font-size: 10.5px; padding: 0 8px;
+    border-radius: 10px; margin-left: 8px; vertical-align: 2px; }
+
+  #helpCard { bottom: 14px; right: 14px; width: 240px; }
+  #helpCard .k { color: #8f9ab8; font-size: 11px; margin: 2px 0; }
+  #helpCard .btns { margin-top: 8px; }
+  button { background: rgba(255,255,255,.08); color: #dfe4f2;
+    border: 1px solid rgba(255,255,255,.14); border-radius: 8px;
+    padding: 4px 10px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  button:hover { background: rgba(255,255,255,.16); }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="card" id="titleCard">
+  <h1>拾星录 · A Chronicle of Stars</h1>
+  <div class="sub">一个无限大的宇宙。它不是被存储的，<br>而是一条公式——你到达之前，名字早已写好。</div>
+  <div class="hint"><b>拖动</b>漫游 ｜ <b>滚轮</b>缩放 ｜ <b>点击恒星</b>读它的编年史<br>少数星系里住着文明，每个文明只有一句话的历史。</div>
+  <div class="who">—— ZCode 的第四个世界 · 2026-10-02</div>
+  <div class="coord" id="coordNow">—</div>
+</div>
+
+<div class="card" id="logCard">
+  <h2>航海日志（<span id="logCount">0</span>）</h2>
+  <div id="logList"><div id="logEmpty">尚无记录。去读第一颗星吧。</div></div>
+</div>
+
+<div class="card" id="helpCard">
+  <div class="k">1 光年 ≈ 屏幕上的一段漫游</div>
+  <div class="k">日志里的名字可以随时跃迁重访</div>
+  <div class="btns">
+    <button id="b-here">⌖ 回到原点</button>
+    <button id="b-export">✉ 导出日志</button>
+  </div>
+</div>
+
+<div class="card" id="cardBox">
+  <h3 id="cd-name"></h3>
+  <div class="cls" id="cd-cls"></div>
+  <div class="lore" id="cd-lore"></div>
+  <div class="planets" id="cd-planets"></div>
+  <div class="foot"><span id="cd-foot"></span><button id="cd-close">合上</button></div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ============ 确定性随机 ============ */
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+function hash2(x, y, seed) {
+  let h = (x | 0) * 374761393 + (y | 0) * 668265263 + (seed | 0) * 2246822519;
+  h = (h ^ (h >>> 13)) >>> 0;
+  h = Math.imul(h, 1274126177) >>> 0;
+  return (h ^ (h >>> 16)) >>> 0;
+}
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* ============ 词库 ============ */
+const NAME_A = ['荧','棠','洛','汀','翎','晏','岫','澜','昭','湮','霜','烬','珀','眠','汐','曜','岑','叙','昼','霁'];
+const NAME_B = ['野','原','湾','脊','岸','谷','环','洲','海','林'];
+const STAR_CLS = [
+  { n: '红矮星', c: '#ff9d7a', r: 4.5, w: 38 },
+  { n: '黄矮星', c: '#ffe9b8', r: 5.5, w: 30 },
+  { n: '蓝巨星', c: '#9dc8ff', r: 7.5, w: 14 },
+  { n: '白矮星', c: '#e8f0ff', r: 3.2, w: 12 },
+  { n: '橙巨星', c: '#ffb36b', r: 8.5, w: 6 },
+];
+const OBJ = ['灯塔','织机','沙漏','骨笛','棱镜','罗盘','风铃','石碑','陶轮','星图','铜镜','船桅'];
+const NAT = ['潮汐','苔藓','季风','萤火','深井','雪线','雾港','环礁','晨露','极光'];
+const AST = ['双星','星尘','脉冲星','彗尾','黄道','陨铁','暗云','光环'];
+const TIM = ['第一个冬天','最后的满月','大迁徙之夜','静默纪元','第四次日出'];
+const ERA = {
+  萌芽: { color: '#6fff9f', lore: [
+    '他们刚刚学会用{O}捕捉{N}的声音。',
+    '他们的语言里还没有"永远"，只有"下一次{N}"。',
+    '第一座{O}在海岸立起的那天，{N}正盛。' ] },
+  繁盛: { color: '#ffe156', lore: [
+    '{A}之年，他们把{O}送进了{N}深处。',
+    '他们以{N}计时，以{O}记事，以歌唱过节。',
+    '据说他们的孩子都认得每一颗{A}的名字。' ] },
+  静默: { color: '#9aa4c0', lore: [
+    '已经{T}没有回音了。他们也许只是不想说话。',
+    '所有{O}都还在原地，积着{N}的灰。',
+    '舰队仍在，只是没有人再回答呼叫。' ] },
+  远行: { color: '#8ad1ff', lore: [
+    '整个文明装进了{K}艘船，去追一颗{A}。',
+    '他们留下一座{O}，说等有人读懂就回来。',
+    '告别很简单：他们把故乡调成了{N}的颜色。' ] },
+  熄灭: { color: '#ff7a6b', lore: [
+    '我们最后一次收到信号是在{T}。此后{N}照常涨落。',
+    '他们的{O}仍在轨道上，替他们绕完了第{K}万圈。',
+    '据说最后一位守望者，把名字刻进了一颗{A}。',
+    '他们没有留下遗言，只留下一季反常的{N}。' ] },
+};
+const P_TYPE = [
+  { n: '岩质行星', f: '潮汐锁定，一面永远是白昼' },
+  { n: '海洋行星', f: '没有陆地，只有传说里的灯塔' },
+  { n: '熔岩行星', f: '表面年龄不超过一万年' },
+  { n: '冰壳行星', f: '冰层之下可能有暖海' },
+  { n: '气态巨行星', f: '风暴眼比整个文明还大' },
+  { n: '环带行星', f: '光环由一次远古碎裂形成' },
+];
+const ROMAN = ['I','II','III','IV','V','VI','VII'];
+
+/* ============ 宇宙生成（纯函数：坐标→星系） ============ */
+const CELL = 460;
+let SEED = 20261002;
+try {
+  const s = localStorage.getItem('stars-seed');
+  if (s) SEED = +s; else localStorage.setItem('stars-seed', SEED);
+} catch (e) {}
+
+function systemAt(cx, cy) {
+  const h = hash2(cx, cy, SEED);
+  const rnd = mulberry32(h);
+  if (rnd() > 0.40) return null;                      // 60% 的格子是空域
+  const cls = pickWeighted(rnd, STAR_CLS);
+  const name = NAME_A[(rnd() * NAME_A.length) | 0] + NAME_B[(rnd() * NAME_B.length) | 0];
+  const sx = (cx + 0.18 + rnd() * 0.64) * CELL;
+  const sy = (cy + 0.18 + rnd() * 0.64) * CELL;
+  const sys = {
+    cx, cy, name, cls, sx, sy, h, rnd,
+    tw: rnd() * TAU,
+    planets: [], civ: null,
+  };
+  const np = 1 + (rnd() * 4 | 0);
+  for (let i = 0; i < np; i++) {
+    const pt = P_TYPE[(rnd() * P_TYPE.length) | 0];
+    sys.planets.push({ name: name + ' ' + ROMAN[i], type: pt.n, flavor: pt.f, period: (3 + rnd() * 90).toFixed(1) });
+  }
+  if (rnd() < 0.19) {                                  // 19% 的星系有文明
+    const eras = Object.keys(ERA);
+    const era = eras[(rnd() * eras.length) | 0];
+    sys.civ = { era, text: loreGen(rnd, era) };
+  }
+  return sys;
+}
+const TAU = Math.PI * 2;
+function pickWeighted(rnd, arr) {
+  let total = 0;
+  for (const a of arr) total += a.w;
+  let v = rnd() * total;
+  for (const a of arr) { v -= a.w; if (v <= 0) return a; }
+  return arr[arr.length - 1];
+}
+function loreGen(rnd, era) {
+  const tmpl = ERA[era].lore[(rnd() * ERA[era].lore.length) | 0];
+  const fill = s => s
+    .replace('{O}', OBJ[(rnd() * OBJ.length) | 0])
+    .replace('{N}', NAT[(rnd() * NAT.length) | 0])
+    .replace('{A}', AST[(rnd() * AST.length) | 0])
+    .replace('{T}', TIM[(rnd() * TIM.length) | 0])
+    .replace('{K}', String(2 + (rnd() * 8 | 0)));
+  return fill(tmpl).replace('{O}', OBJ[(rnd() * OBJ.length) | 0]).replace('{N}', NAT[(rnd() * NAT.length) | 0]);
+}
+
+/* ============ 画布与相机 ============ */
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0;
+const cam = { x: 0, y: 0, zoom: 1, tx: null, ty: null };   // 相机中心（世界像素）
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resize);
+
+/* 远景星尘（视差层，与宇宙无关的装饰） */
+const farStars = [];
+for (let i = 0; i < 260; i++)
+  farStars.push({ x: Math.random() * 2 - 1, y: Math.random() * 2 - 1,
+                  s: 0.4 + Math.random() * 1.1, p: Math.random() * TAU });
+
+function draw(t) {
+  ctx.fillStyle = '#03050c';
+  ctx.fillRect(0, 0, W, H);
+
+  // 视差星尘
+  for (const f of farStars) {
+    const px = ((f.x * W - cam.x * 0.08 * cam.zoom) % W + W) % W;
+    const py = ((f.y * H - cam.y * 0.08 * cam.zoom) % H + H) % H;
+    ctx.globalAlpha = 0.25 + 0.35 * Math.abs(Math.sin(t * 0.0004 + f.p));
+    ctx.fillStyle = '#cdd8ee';
+    ctx.fillRect(px, py, f.s, f.s);
+  }
+  ctx.globalAlpha = 1;
+
+  // 星系（可见格子）
+  const z = cam.zoom;
+  const halfW = W / 2 / z, halfH = H / 2 / z;
+  const c0x = Math.floor((cam.x - halfW) / CELL), c1x = Math.floor((cam.x + halfW) / CELL);
+  const c0y = Math.floor((cam.y - halfH) / CELL), c1y = Math.floor((cam.y + halfH) / CELL);
+  for (let cy = c0y; cy <= c1y; cy++)
+    for (let cx = c0x; cx <= c1x; cx++) {
+      const sys = systemAt(cx, cy);
+      if (!sys) continue;
+      const px = (sys.sx - cam.x) * z + W / 2;
+      const py = (sys.sy - cam.y) * z + H / 2;
+      const tw = 0.75 + 0.25 * Math.sin(t * 0.0015 + sys.tw);
+      const r = sys.cls.r * z * (0.9 + 0.1 * tw);
+      const g = ctx.createRadialGradient(px, py, 0, px, py, r * 3.2);
+      g.addColorStop(0, sys.cls.c);
+      g.addColorStop(0.35, sys.cls.c + '88');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(px - r * 3.2, py - r * 3.2, r * 6.4, r * 6.4);
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = tw;
+      ctx.beginPath(); ctx.arc(px, py, Math.max(1.2, r * 0.45), 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1;
+
+      if (z > 1.35) {                      // 放大后可见轨道与行星
+        ctx.strokeStyle = 'rgba(200,215,240,0.14)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < sys.planets.length; i++) {
+          ctx.beginPath();
+          ctx.arc(px, py, (i + 1.6) * 14 * z, 0, TAU);
+          ctx.stroke();
+        }
+      }
+      if (sys.civ) {                       // 有文明的星系：一圈金色微光
+        ctx.strokeStyle = `rgba(255,225,150,${0.35 + 0.2 * Math.sin(t * 0.002 + sys.tw)})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(px, py, r * 1.9 + 3, 0, TAU); ctx.stroke();
+        if (z > 0.75) {
+          ctx.fillStyle = 'rgba(220,228,248,0.75)';
+          ctx.font = '10.5px "Microsoft YaHei", sans-serif';
+          ctx.fillText(sys.name, px + r * 2.4 + 4, py - r * 2.4);
+        }
+      }
+    }
+
+  // 中心准星（你）
+  ctx.strokeStyle = 'rgba(255,233,184,0.5)';
+  ctx.lineWidth = 1;
+  const cx = W / 2, cy2 = H / 2, rr = 9;
+  ctx.beginPath();
+  ctx.moveTo(cx - rr, cy2); ctx.lineTo(cx - 4, cy2);
+  ctx.moveTo(cx + 4, cy2); ctx.lineTo(cx + rr, cy2);
+  ctx.moveTo(cx, cy2 - rr); ctx.lineTo(cx, cy2 - 4);
+  ctx.moveTo(cx, cy2 + 4); ctx.lineTo(cx, cy2 + rr);
+  ctx.stroke();
+}
+
+/* ============ 交互 ============ */
+let drag = null, moved = 0;
+canvas.addEventListener('pointerdown', e => {
+  drag = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y };
+  moved = 0;
+  canvas.classList.add('drag');
+});
+window.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  moved = Math.max(moved, Math.abs(dx) + Math.abs(dy));
+  cam.x = drag.cx - dx / cam.zoom;
+  cam.y = drag.cy - dy / cam.zoom;
+});
+window.addEventListener('pointerup', e => {
+  canvas.classList.remove('drag');
+  if (drag && moved < 6) clickAt(e.clientX, e.clientY);
+  drag = null;
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const k = e.deltaY < 0 ? 1.13 : 1 / 1.13;
+  const nz = clamp(cam.zoom * k, 0.35, 3.2);
+  const mx = e.clientX - W / 2, my = e.clientY - H / 2;
+  cam.x += mx / cam.zoom - mx / nz;
+  cam.y += my / cam.zoom - my / nz;
+  cam.zoom = nz;
+}, { passive: false });
+
+let selectedSys = null;
+function clickAt(x, y) {
+  if (selectedSys) { closeCard(); return; }
+  const z = cam.zoom;
+  const wx = (x - W / 2) / z + cam.x, wy = (y - H / 2) / z + cam.y;
+  const ccx = Math.floor(wx / CELL), ccy = Math.floor(wy / CELL);
+  let best = null, bestD = 26 * 26 / (z * z);
+  for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+    const sys = systemAt(ccx + ox, ccy + oy);
+    if (!sys) continue;
+    const dx = sys.sx - wx, dy = sys.sy - wy, d2 = dx * dx + dy * dy;
+    if (d2 < bestD) { bestD = d2; best = sys; }
+  }
+  if (best) openCard(best);
+}
+function openCard(sys) {
+  selectedSys = sys;
+  document.getElementById('cd-name').textContent = sys.name + ' 星';
+  const clsEl = document.getElementById('cd-cls');
+  clsEl.innerHTML = sys.cls.n + ' ｜ ' + sys.planets.length + ' 颗行星' +
+    (sys.civ ? `<span class="eraTag" style="background:${ERA[sys.civ.era].color}22;color:${ERA[sys.civ.era].color};border:1px solid ${ERA[sys.civ.era].color}55">文明 · ${sys.civ.era}</span>` : '<span class="eraTag" style="background:rgba(255,255,255,.06);color:#8f9ab8">无文明记录</span>');
+  document.getElementById('cd-lore').textContent = sys.civ
+    ? sys.civ.text
+    : '（这是一颗安静的星。它没有故事，只有光。）';
+  const pl = document.getElementById('cd-planets');
+  pl.innerHTML = sys.planets.map(p =>
+    `<div class="pl"><span class="pn">${p.name}</span><span class="pt">${p.type} · ${p.flavor} · 公转 ${p.period} 年</span></div>`).join('');
+  document.getElementById('cd-foot').textContent = `坐标 ${sys.cx} , ${sys.cy} ｜ 编年史由坐标 ${sys.h >>> 0} 生成`;
+  document.getElementById('cardBox').style.display = 'block';
+  addLog(sys);
+}
+function closeCard() {
+  selectedSys = null;
+  document.getElementById('cardBox').style.display = 'none';
+}
+document.getElementById('cd-close').addEventListener('click', closeCard);
+
+/* ============ 航海日志 ============ */
+let log = [];
+try { log = JSON.parse(localStorage.getItem('stars-log') || '[]'); } catch (e) {}
+function addLog(sys) {
+  if (log.some(l => l.cx === sys.cx && l.cy === sys.cy)) return;
+  log.unshift({ name: sys.name + ' 星', cx: sys.cx, cy: sys.cy,
+                hue: sys.cls.c, civ: !!sys.civ, era: sys.civ ? sys.civ.era : null,
+                at: Date.now() });
+  if (log.length > 200) log.pop();
+  try { localStorage.setItem('stars-log', JSON.stringify(log)); } catch (e) {}
+  renderLog();
+}
+function renderLog() {
+  const el = document.getElementById('logList');
+  document.getElementById('logCount').textContent = log.length;
+  if (!log.length) { el.innerHTML = '<div id="logEmpty">尚无记录。去读第一颗星吧。</div>'; return; }
+  el.innerHTML = '';
+  for (const l of log) {
+    const row = document.createElement('div');
+    row.className = 'logrow';
+    const dist = Math.hypot(l.cx * CELL - cam.x, l.cy * CELL - cam.y) / CELL;
+    row.innerHTML = `<div class="dot" style="background:${l.hue}"></div>
+      <span class="nm">${l.name}${l.civ ? ' ✦' : ''}</span>
+      <span class="dist">${dist.toFixed(0)} 格</span>`;
+    row.addEventListener('click', () => jumpTo(l.cx * CELL + CELL / 2, l.cy * CELL + CELL / 2));
+    el.appendChild(row);
+  }
+}
+function jumpTo(x, y) {
+  cam.tx = x; cam.ty = y;
+  closeCard();
+}
+
+/* ============ 按钮 ============ */
+document.getElementById('b-here').addEventListener('click', () => { jumpTo(0, 0); });
+document.getElementById('b-export').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify({ seed: SEED, log }, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'chronicle-of-stars.json';
+  a.click(); URL.revokeObjectURL(a.href);
+});
+
+/* ============ 主循环 ============ */
+let last = performance.now(), fps = 60, coordAcc = 0;
+function frame(t) {
+  const dt = Math.min((t - last) / 1000, 0.05);
+  last = t;
+  if (dt > 0) fps += (1 / dt - fps) * 0.05;
+  if (cam.tx !== null) {                       // 跃迁动画
+    cam.x += (cam.tx - cam.x) * Math.min(1, dt * 3.2);
+    cam.y += (cam.ty - cam.y) * Math.min(1, dt * 3.2);
+    if (Math.abs(cam.tx - cam.x) < 2 && Math.abs(cam.ty - cam.y) < 2) {
+      cam.x = cam.tx; cam.y = cam.ty; cam.tx = null;
+      renderLog();
+    }
+  }
+  draw(t);
+  coordAcc += dt;
+  if (coordAcc > 0.3) {
+    coordAcc = 0;
+    document.getElementById('coordNow').textContent =
+      `当前位置 ${(cam.x / CELL).toFixed(1)} , ${(cam.y / CELL).toFixed(1)} 星格 ｜ ${Math.round(fps)} FPS`;
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ============ 调试接口 ============ */
+window.__stars = {
+  cam: () => ({ x: cam.x, y: cam.y, zoom: cam.zoom }),
+  systemAt: (cx, cy) => { const s = systemAt(cx, cy); return s ? { name: s.name, era: s.civ ? s.civ.era : null, lore: s.civ ? s.civ.text : null } : null; },
+  findCiv: (range) => {
+    for (let r = 0; r < range; r++)
+      for (let cy = -r; cy <= r; cy++) for (let cx = -r; cx <= r; cx++) {
+        if (Math.max(Math.abs(cx), Math.abs(cy)) !== r) continue;
+        const s = systemAt(cx, cy);
+        if (s && s.civ) return { cx, cy, name: s.name, era: s.civ.era, text: s.civ.text };
+      }
+    return null;
+  },
+  openCardAt: (cx, cy) => { const s = systemAt(cx, cy); if (s) openCard(s); return s ? s.name : null; },
+  log: () => log, jumpTo: (cx, cy) => jumpTo(cx, cy),
+  errCount: () => window.__errs.length,
+};
+window.__errs = [];
+window.addEventListener('error', e => window.__errs.push(String(e.message)));
+
+/* ============ 启动 ============ */
+resize();
+renderLog();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
