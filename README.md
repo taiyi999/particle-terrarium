@@ -39,6 +39,7 @@
 | `main` | **粒子生态沙盘** · Particle Terrarium | 简单的引力矩阵，长出秩序与美 |
 | `primordial-soup` | **原始汤** · Primordial Soup | 基因组 × 神经网络 × 自然选择，生命自己学会活下去 |
 | `echo-garden` | **回声花园** · Echo Garden | 会自己作曲的花田——一个造物者永远无法亲耳听见的世界 |
+| `chronicle-of-stars` | **拾星录** · A Chronicle of Stars | 无限的确定性宇宙——你到达之前，名字早已写好 |
 
 ## License
 
