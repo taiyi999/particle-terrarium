@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>言灵 · YanLing — 一门中文小语言</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #07090f; color: #dfe4f2;
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; overflow: hidden; }
+  body { display: flex; flex-direction: column; }
+
+  header { padding: 14px 20px 10px; display: flex; align-items: baseline; gap: 14px;
+    border-bottom: 1px solid rgba(255,255,255,.08); }
+  header h1 { font-size: 17px; letter-spacing: 2px; font-weight: 600;
+    background: linear-gradient(90deg,#ffe9b8,#c9a1ff,#8ad1ff);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  header .tag { color: #8f9ab8; font-size: 12px; }
+  header .run { margin-left: auto; background: rgba(201,138,255,.2);
+    border: 1px solid rgba(201,138,255,.5); color: #efe6ff; font-size: 13px;
+    padding: 5px 18px; border-radius: 8px; cursor: pointer; }
+  header .run:hover { background: rgba(201,138,255,.32); }
+
+  main { flex: 1; display: flex; min-height: 0; }
+  #left { flex: 1.15; display: flex; flex-direction: column; min-width: 0;
+    border-right: 1px solid rgba(255,255,255,.08); }
+  #examples { display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 12px;
+    border-bottom: 1px solid rgba(255,255,255,.06); }
+  #examples button { background: rgba(255,255,255,.06); color: #b9c2da;
+    border: 1px solid rgba(255,255,255,.1); border-radius: 14px;
+    font-size: 11px; padding: 2px 10px; cursor: pointer; font-family: inherit; }
+  #examples button:hover { background: rgba(255,255,255,.13); color: #e8edf8; }
+  #src { flex: 1; width: 100%; resize: none; border: none; outline: none;
+    background: transparent; color: #e8edf8; caret-color: #c9a1ff;
+    font: 14px/1.75 "Cascadia Code", Consolas, "Microsoft YaHei", monospace;
+    padding: 14px 18px; white-space: pre; }
+
+  #right { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #right .head { padding: 8px 16px; font-size: 11.5px; color: #8f9ab8;
+    letter-spacing: 1.5px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  #out { flex: 1; overflow: auto; padding: 12px 16px;
+    font: 13.5px/1.8 "Cascadia Code", Consolas, "Microsoft YaHei", monospace;
+    white-space: pre-wrap; word-break: break-all; }
+  #out .err { color: #ff8a7a; }
+  #out .ok { color: #6f8f7a; font-size: 12px; }
+  #out .val { color: #ffe9b8; }
+
+  footer { padding: 6px 20px; font-size: 11px; color: #5f6a88;
+    border-top: 1px solid rgba(255,255,255,.08); display: flex; gap: 18px; }
+  footer b { color: #9aa4c0; font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+  <h1>言灵 · YanLing</h1>
+  <span class="tag">一门中文小语言 —— 词有灵，落笔即运行</span>
+  <button class="run" id="b-run">▶ 运行（Ctrl+Enter）</button>
+</header>
+
+<main>
+  <div id="left">
+    <div id="examples"></div>
+    <textarea id="src" spellcheck="false"></textarea>
+  </div>
+  <div id="right">
+    <div class="head">输出</div>
+    <div id="out"><span style="color:#5f6a88">（按 ▶ 运行左侧的程序）</span></div>
+  </div>
+</main>
+
+<footer>
+  <span><b>让</b> x = 3 　赋值</span>
+  <span><b>当</b> 条件 { } 　循环</span>
+  <span><b>如果</b> 条件 { } <b>否则</b> { }</span>
+  <span><b>术</b> 名字(参数) { } 　定义函数</span>
+  <span><b>返回</b> / <b>跳出</b> / <b>下一个</b></span>
+  <span><b>且</b> <b>或</b> <b>非</b> 　逻辑</span>
+  <span>「文字」与"文字"都是字符串</span>
+  <span># 井号后是注释</span>
+</footer>
+
+<script>
+/*YANLING-CORE-START*/
+(() => {
+'use strict';
+
+const KEYWORDS = new Set(['让','如果','否则','当','术','返回','跳出','下一个','真','假','空','且','或','非']);
+const KEYWORD_NAME = { 让:'LET', 如果:'IF', 否则:'ELSE', 当:'WHILE', 术:'FN', 返回:'RET',
+                       跳出:'BREAK', 下一个:'CONT', 真:'TRUE', 假:'FALSE', 空:'NIL',
+                       且:'AND', 或:'OR', 非:'NOT' };
+
+function err(行, 消息) { const e = new Error(消息); e.行 = 行; e.言灵 = true; return e; }
+
+/* ---------- 词法 ---------- */
+function tokenize(源) {
+  const ts = []; let i = 0, 行 = 1;
+  const n = 源.length;
+  const isIdChar = ch => /[\p{L}\p{N}_]/u.test(ch);
+  while (i < n) {
+    const ch = 源[i];
+    if (ch === '\n') { 行++; i++; continue; }
+    if (ch === ' ' || ch === '\t' || ch === '\r') { i++; continue; }
+    if (ch === '#') { while (i < n && 源[i] !== '\n') i++; continue; }
+    if (ch === '「') {
+      const start = i; i++;
+      let s = '';
+      while (i < n && 源[i] !== '」') {
+        if (源[i] === '\n') { 行++; }
+        s += 源[i++];
+      }
+      if (i >= n) throw err(行, '这个「没有等到它的」');
+      i++;
+      ts.push({ t: '串', v: s, 行 });
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      const quote = ch; i++;
+      let s = '';
+      while (i < n && 源[i] !== quote) {
+        if (源[i] === '\\') {
+          const c = 源[i + 1];
+          if (c === 'n') { s += '\n'; i += 2; continue; }
+          if (c === 't') { s += '\t'; i += 2; continue; }
+          if (c === quote || c === '\\') { s += c; i += 2; continue; }
+        }
+        if (源[i] === '\n') 行++;
+        s += 源[i++];
+      }
+      if (i >= n) throw err(行, '字符串没有闭合');
+      i++;
+      ts.push({ t: '串', v: s, 行 });
+      continue;
+    }
+    if (/[0-9]/.test(ch)) {
+      let s = '';
+      while (i < n && /[0-9.]/.test(源[i])) s += 源[i++];
+      ts.push({ t: '数', v: parseFloat(s), 行 });
+      continue;
+    }
+    if (isIdChar(ch)) {
+      let s = '';
+      while (i < n && isIdChar(源[i])) s += 源[i++];
+      if (KEYWORDS.has(s)) ts.push({ t: '键', k: KEYWORD_NAME[s], v: s, 行 });
+      else ts.push({ t: '名', v: s, 行 });
+      continue;
+    }
+    const two = 源.slice(i, i + 2);
+    if (two === '==' || two === '!=' || two === '>=' || two === '<=') {
+      ts.push({ t: '算', v: two, 行 }); i += 2; continue;
+    }
+    if ('+-*/%=<>()[],{}'.includes(ch)) { ts.push({ t: '算', v: ch, 行 }); i++; continue; }
+    throw err(行, `不认识的字符「${ch}」`);
+  }
+  ts.push({ t: '终', 行 });
+  return ts;
+}
+
+/* ---------- 语法（Pratt 解析） ---------- */
+function parse(ts) {
+  let p = 0;
+  const peek = () => ts[p];
+  const next = () => ts[p++];
+  const expect = (v, what) => {
+    const tk = next();
+    if (tk.t === '终' || tk.v !== v) throw err(tk.行, `这里应当是「${v}」${what ? '（' + what + '）' : ''}`);
+    return tk;
+  };
+
+  function program() {
+    const stmts = [];
+    while (peek().t !== '终') stmts.push(statement());
+    return stmts;
+  }
+  function block() {
+    expect('{');
+    const stmts = [];
+    while (peek().t !== '终' && peek().v !== '}') stmts.push(statement());
+    expect('}');
+    return stmts;
+  }
+  function statement() {
+    const tk = peek();
+    if (tk.t === '键') {
+      if (tk.k === 'LET') {
+        next();
+        const nameTk = next();
+        if (nameTk.t !== '名') throw err(nameTk.行, '让 之后应当跟一个名字');
+        if (peek().v === '[') {                    // 让 列[i] = ...（必须先于 '=' 判断）
+          next();
+          const idx = expression();
+          expect(']');
+          expect('=');
+          const v = expression();
+          return { t: '索让', obj: { t: '名', v: nameTk.v, 行: nameTk.行 }, idx, e: v, 行: nameTk.行 };
+        }
+        expect('=');
+        const e = expression();
+        return { t: '让', name: nameTk.v, e, 行: nameTk.行 };
+      }
+      if (tk.k === 'IF') {
+        next();
+        const cond = expression();
+        const then = block();
+        let els = null;
+        if (peek().t === '键' && peek().k === 'ELSE') {
+          next();
+          if (peek().t === '键' && peek().k === 'IF') els = [statement()];
+          else els = block();
+        }
+        return { t: '如果', cond, then, els, 行: tk.行 };
+      }
+      if (tk.k === 'WHILE') {
+        next();
+        const cond = expression();
+        const body = block();
+        return { t: '当', cond, body, 行: tk.行 };
+      }
+      if (tk.k === 'FN') {
+        next();
+        const nameTk = next();
+        if (nameTk.t !== '名') throw err(nameTk.行, '术 之后应当跟函数名');
+        expect('(');
+        const params = [];
+        while (peek().v !== ')') {
+          const pt = next();
+          if (pt.t !== '名') throw err(pt.行, '参数应当是名字');
+          params.push(pt.v);
+          if (peek().v === ',') next();
+          else break;
+        }
+        expect(')');
+        const body = block();
+        return { t: '术', name: nameTk.v, params, body, 行: nameTk.行 };
+      }
+      if (tk.k === 'RET') {
+        next();
+        if (peek().v === '}' || peek().t === '终') return { t: '返回', e: null, 行: tk.行 };
+        return { t: '返回', e: expression(), 行: tk.行 };
+      }
+      if (tk.k === 'BREAK') { next(); return { t: '跳出', 行: tk.行 }; }
+      if (tk.k === 'CONT') { next(); return { t: '下一个', 行: tk.行 }; }
+    }
+    return { t: '语句', e: expression(), 行: tk.行 };
+  }
+
+  function expression(lvl = 1) {
+    const PREC = { 或: 1, 且: 2, cmp: 3, 加: 4, 乘: 5 };
+    let left = unary();
+    for (;;) {
+      const tk = peek();
+      let op = null;
+      if (tk.t === '键' && (tk.k === 'OR' || tk.k === 'AND')) op = tk.k === 'OR' ? '或' : '且';
+      else if (tk.t === '算' && ['==','!=','<','<=','>','>='].includes(tk.v)) op = 'cmp';
+      else if (tk.t === '算' && '+-'.includes(tk.v)) op = '加';
+      else if (tk.t === '算' && '*/%'.includes(tk.v)) op = '乘';
+      if (!op) break;
+      if (PREC[op] < lvl) break;
+      next();
+      const right = expression(PREC[op] + 1);
+      left = { t: '二元', op: tk.v, l: left, r: right, 行: tk.行 };
+    }
+    return left;
+  }
+  function unary() {
+    const tk = peek();
+    if (tk.t === '键' && tk.k === 'NOT') { next(); return { t: '一元', op: '非', e: unary(), 行: tk.行 }; }
+    if (tk.t === '算' && tk.v === '-') { next(); return { t: '一元', op: '负', e: unary(), 行: tk.行 }; }
+    return postfix(primary());
+  }
+  function postfix(e) {
+    for (;;) {
+      const tk = peek();
+      if (tk.v === '(') {
+        next();
+        const args = [];
+        while (peek().v !== ')') {
+          args.push(expression());
+          if (peek().v === ',') next(); else break;
+        }
+        expect(')');
+        e = { t: '调用', fn: e, args, 行: tk.行 };
+      } else if (tk.v === '[') {
+        next();
+        const idx = expression();
+        expect(']');
+        e = { t: '索引', obj: e, idx, 行: tk.行 };
+      } else break;
+    }
+    return e;
+  }
+  function primary() {
+    const tk = next();
+    if (tk.t === '数') return { t: '数', v: tk.v };
+    if (tk.t === '串') return { t: '串', v: tk.v };
+    if (tk.t === '名') return { t: '名', v: tk.v, 行: tk.行 };
+    if (tk.t === '键') {
+      if (tk.k === 'TRUE') return { t: '真' };
+      if (tk.k === 'FALSE') return { t: '假' };
+      if (tk.k === 'NIL') return { t: '空' };
+      if (tk.k === 'FN') {                       // 匿名函数表达式：术(参数){...}
+        expect('(');
+        const params = [];
+        while (peek().v !== ')') {
+          const pt = next();
+          if (pt.t !== '名') throw err(pt.行, '参数应当是名字');
+          params.push(pt.v);
+          if (peek().v === ',') next(); else break;
+        }
+        expect(')');
+        const body = block();
+        return { t: '函', params, body, 行: tk.行 };
+      }
+      if (tk.k === 'NOT') { p--; return unary(); }
+      throw err(tk.行, `「${tk.v}」不能出现在这里`);
+    }
+    if (tk.v === '(') {
+      const e = expression();
+      expect(')');
+      return e;
+    }
+    if (tk.v === '[') {
+      const items = [];
+      while (peek().v !== ']') {
+        items.push(expression());
+        if (peek().v === ',') next(); else break;
+      }
+      expect(']');
+      return { t: '列', items };
+    }
+    if (tk.t === '终') throw err(tk.行, '程序在这里意外结束了');
+    throw err(tk.行, `这里不该有「${tk.v}」`);
+  }
+
+  const ast = program();
+  return ast;
+}
+
+/* ---------- 解释器 ---------- */
+class Env {
+  constructor(parent) { this.vars = new Map(); this.parent = parent; }
+  find(name) { let e = this; while (e) { if (e.vars.has(name)) return e; e = e.parent; } return null; }
+  get(name, 行) {
+    const e = this.find(name);
+    if (!e) throw err(行, `不认识的名字「${name}」`);
+    return e.vars.get(name);
+  }
+  define(name, v) { this.vars.set(name, v); }
+  set(name, v, 行) {
+    const e = this.find(name);
+    if (!e) throw err(行, `不认识的名字「${name}」`);
+    e.vars.set(name, v);
+  }
+}
+const RET = Symbol('返回'), BRK = Symbol('跳出'), CONT = Symbol('下一个');
+
+function 文本(x) {
+  if (typeof x === 'string') return x;
+  if (typeof x === 'number') return Number.isInteger(x) ? String(x) : String(Math.round(x * 1e6) / 1e6);
+  if (x === true) return '真';
+  if (x === false) return '假';
+  if (x === null) return '空';
+  if (Array.isArray(x)) return '[' + x.map(文本).join(', ') + ']';
+  if (x && x.函数) return '〈术 ' + (x.名 || '匿名') + '〉';
+  return String(x);
+}
+
+function interpret(ast, hook) {
+  const globals = new Env(null);
+  const out = [];
+  let ops = 0, depth = 0;
+  const LIMIT = 5e6, MAXOUT = 2e4;
+
+  function native(名, fn) { globals.define(名, { 函数: true, 原生: true, 名, fn }); }
+
+  native('打印', xs => { const s = xs.map(文本).join(' '); out.push(s); if (out.length > MAXOUT) throw err(0, '输出太多了（超过两万行），已停手'); return null; });
+  native('文本', ([x]) => 文本(x));
+  native('数字', ([x], 行) => {
+    const v = typeof x === 'string' ? parseFloat(x) : x;
+    if (typeof v !== 'number' || isNaN(v)) throw err(行 || 0, `「${文本(x)}」读不出数字`);
+    return v;
+  });
+  native('长度', ([x], 行) => {
+    if (typeof x === 'string' || Array.isArray(x)) return x.length;
+    throw err(行 || 0, `${文本(x)}没有长度`);
+  });
+  native('取', ([c, i], 行) => {
+    if (typeof c !== 'string' && !Array.isArray(c)) throw err(行 || 0, '取 只能用于列或串');
+    if (!Number.isInteger(i)) throw err(行 || 0, '序号必须是整数');
+    if (i < 0 || i >= c.length) throw err(行 || 0, `越界了：序号 ${i}，但长度只有 ${c.length}`);
+    return c[i];
+  });
+  native('推入', ([c, v], 行) => {
+    if (!Array.isArray(c)) throw err(行 || 0, '推入 只能用于列');
+    c.push(v); return c;
+  });
+  native('弹出', ([c], 行) => {
+    if (!Array.isArray(c) || !c.length) throw err(行 || 0, '弹出 不能用于空列');
+    return c.pop();
+  });
+  native('随机', ([n], 行) => {
+    if (typeof n !== 'number' || n < 1) throw err(行 || 0, '随机 需要一个 ≥1 的数');
+    return Math.floor(Math.random() * n);
+  });
+  native('取整', ([x]) => Math.floor(x));
+  native('平方根', ([x], 行) => {
+    if (x < 0) throw err(行 || 0, '负数没有平方根');
+    return Math.sqrt(x);
+  });
+
+  function tick(行) {
+    if (++ops > LIMIT) throw err(行 || 0, '运行太久了（超过五百万步），已熔断——检查是不是死循环');
+  }
+
+  function truthy(v, 行) {
+    if (v === true) return true;
+    if (v === false || v === null) return false;
+    throw err(行, `条件必须是 真 或 假，这里却是 ${文本(v)}`);
+  }
+  function binop(op, l, r, 行) {
+    switch (op) {
+      case '+':
+        if (typeof l === 'number' && typeof r === 'number') return l + r;
+        if (typeof l === 'string' || typeof r === 'string') return 文本(l) + 文本(r);
+        if (Array.isArray(l) && Array.isArray(r)) return l.concat(r);
+        throw err(行, `${文本(l)} 和 ${文本(r)} 不能相加`);
+      case '-': num(l, r, 行); return l - r;
+      case '*': num(l, r, 行); return l * r;
+      case '/': num(l, r, 行); if (r === 0) throw err(行, '零不能作除数'); return l / r;
+      case '%': num(l, r, 行); if (r === 0) throw err(行, '零不能作除数'); return ((l % r) + r) % r;
+      case '==': return deepEq(l, r);
+      case '!=': return !deepEq(l, r);
+      case '<': case '<=': case '>': case '>=': {
+        if (typeof l === 'number' && typeof r === 'number') {
+          if (op === '<') return l < r; if (op === '<=') return l <= r;
+          if (op === '>') return l > r; return l >= r;
+        }
+        if (typeof l === 'string' && typeof r === 'string') {
+          if (op === '<') return l < r; if (op === '<=') return l <= r;
+          if (op === '>') return l > r; return l >= r;
+        }
+        throw err(行, `${文本(l)} 和 ${文本(r)} 不能比大小`);
+      }
+    }
+  }
+  function num(a, b, 行) {
+    if (typeof a !== 'number' || typeof b !== 'number')
+      throw err(行, `「${文本(a)}」和「${文本(b)}」都得是数`);
+  }
+  function deepEq(a, b) {
+    if (Array.isArray(a) && Array.isArray(b))
+      return a.length === b.length && a.every((v, i) => deepEq(v, b[i]));
+    return a === b;
+  }
+
+  function exec(stmt, env) {
+    tick(stmt.行);
+    switch (stmt.t) {
+      case '让': {
+        const holder = env.find(stmt.name);
+        if (holder) holder.vars.set(stmt.name, evalE(stmt.e, env));   // 已有名字＝赋值
+        else env.define(stmt.name, evalE(stmt.e, env));                // 否则＝新定义
+        return null;
+      }
+      case '索让': {
+        const obj = evalE(stmt.obj, env);
+        if (!Array.isArray(obj)) throw err(stmt.行, '只能给列的成员赋值');
+        const idx = evalE(stmt.idx, env);
+        if (!Number.isInteger(idx) || idx < 0 || idx >= obj.length)
+          throw err(stmt.行, `越界了：序号 ${文本(idx)}，但长度只有 ${obj.length}`);
+        obj[idx] = evalE(stmt.e, env);
+        return null;
+      }
+      case '如果':
+        if (truthy(evalE(stmt.cond, env), stmt.行)) return execBlock(stmt.then, new Env(env));
+        else if (stmt.els) return execBlock(stmt.els, new Env(env));
+        return null;
+      case '当': {
+        const benv = new Env(env);                     // 整个循环共用一个块环境
+        while (truthy(evalE(stmt.cond, env), stmt.行)) {
+          tick(stmt.行);
+          const sig = execBlock(stmt.body, benv);
+          if (sig && sig[RET]) return sig;
+          if (sig && sig[BRK]) break;
+        }
+        return null;
+      }
+      case '术':
+        env.define(stmt.name, { 函数: true, 名: stmt.name, params: stmt.params, body: stmt.body, env });
+        return null;
+      case '返回': return { [RET]: true, v: stmt.e === null ? null : evalE(stmt.e, env) };
+      case '跳出': return { [BRK]: true };
+      case '下一个': return { [CONT]: true };
+      case '语句': evalE(stmt.e, env); return null;
+    }
+  }
+  function execBlock(stmts, env) {
+    for (const s of stmts) {
+      const sig = exec(s, env);
+      if (sig && (sig[RET] || sig[BRK] || sig[CONT])) return sig;
+    }
+    return null;
+  }
+  function evalE(e, env) {
+    tick(e.行);
+    switch (e.t) {
+      case '数': case '串': return e.v;
+      case '真': return true;
+      case '假': return false;
+      case '空': return null;
+      case '函': return { 函数: true, 名: '匿名', params: e.params, body: e.body, env };
+      case '列': return e.items.map(it => evalE(it, env));
+      case '名': return env.get(e.v, e.行);
+      case '一元': {
+        const v = evalE(e.e, env);
+        if (e.op === '负') {
+          if (typeof v !== 'number') throw err(e.行, `「${文本(v)}」不是数，不能取负`);
+          return -v;
+        }
+        return !truthy(v, e.行);
+      }
+      case '二元': {
+        if (e.op === '且') return truthy(evalE(e.l, env), e.行) ? truthy(evalE(e.r, env), e.行) : false;
+        if (e.op === '或') return truthy(evalE(e.l, env), e.行) ? true : truthy(evalE(e.r, env), e.行);
+        return binop(e.op, evalE(e.l, env), evalE(e.r, env), e.行);
+      }
+      case '索引': {
+        const obj = evalE(e.obj, env);
+        const idx = evalE(e.idx, env);
+        if (typeof obj === 'string' || Array.isArray(obj)) {
+          if (!Number.isInteger(idx)) throw err(e.行, '序号必须是整数');
+          if (idx < 0 || idx >= obj.length) throw err(e.行, `越界了：序号 ${idx}，但长度只有 ${obj.length}`);
+          return obj[idx];
+        }
+        throw err(e.行, `${文本(obj)}不能用序号取值`);
+      }
+      case '调用': {
+        const fn = evalE(e.fn, env);
+        if (!fn || !fn.函数) throw err(e.行, `${文本(fn)} 不是函数，不能调用`);
+        const args = e.args.map(a => evalE(a, env));
+        if (fn.原生) return fn.fn(args, e.行);
+        if (++depth > 180) { depth--; throw err(e.行, '递归太深了（超过 180 层）'); }
+        const fenv = new Env(fn.env);
+        fn.params.forEach((p, i) => fenv.define(p, i < args.length ? args[i] : null));
+        const sig = execBlock(fn.body, fenv);
+        depth--;
+        return sig && sig[RET] ? sig.v : null;
+      }
+    }
+  }
+
+  execBlock(ast, globals);
+  return out;
+}
+
+/* ---------- 运行入口 ---------- */
+function 运行(源) {
+  const ast = parse(tokenize(源));
+  return interpret(ast);
+}
+
+const YanLing = { tokenize, parse, interpret, 运行, 文本 };
+if (typeof window !== 'undefined') window.YANLING = YanLing;
+if (typeof globalThis !== 'undefined') globalThis.YANLING = YanLing;
+if (typeof module !== 'undefined' && module.exports) module.exports = YanLing;
+})();
+/*YANLING-CORE-END*/
+</script>
+
+<script>
+(() => {
+'use strict';
+const Y = window.YANLING;
+
+/* ---------- 示例 ---------- */
+const EXAMPLES = [
+['你好，世界', `打印(「你好，世界」)
+打印("双引号也可以")`],
+['九九乘法表', `让 i = 1
+当 i <= 9 {
+  让 行 = 「」
+  让 j = 1
+  当 j <= i {
+    让 行 = 行 + i + 「×」 + j + 「=」 + i * j + 「  」
+    让 j = j + 1
+  }
+  打印(行)
+  让 i = i + 1
+}`],
+['阶乘（递归）', `术 阶乘(n) {
+  如果 n <= 1 { 返回 1 }
+  返回 n * 阶乘(n - 1)
+}
+让 i = 1
+当 i <= 10 {
+  打印(i + 「! = 」 + 阶乘(i))
+  让 i = i + 1
+}`],
+['斐波那契', `术 斐波那契(n) {
+  如果 n < 2 { 返回 n }
+  返回 斐波那契(n - 1) + 斐波那契(n - 2)
+}
+让 结果 = []
+让 i = 0
+当 i < 15 {
+  推入(结果, 斐波那契(i))
+  让 i = i + 1
+}
+打印(「前 15 个：」 + 文本(结果))`],
+['三五之谜', `让 i = 1
+当 i <= 20 {
+  如果 i % 15 == 0 { 打印(i + 「 —— 三五之谜」) }
+  否则 {
+    如果 i % 3 == 0 { 打印(i + 「 —— 三」) }
+    否则 {
+      如果 i % 5 == 0 { 打印(i + 「 —— 五」) }
+      否则 { 打印(i) }
+    }
+  }
+  让 i = i + 1
+}`],
+['冒泡排序', `让 列 = [64, 25, 90, 12, 8, 47]
+让 i = 0
+当 i < 长度(列) - 1 {
+  让 j = 0
+  当 j < 长度(列) - 1 - i {
+    如果 列[j] > 列[j + 1] {
+      让 临时 = 列[j]
+      让 列[j] = 列[j + 1]
+      让 列[j + 1] = 临时
+    }
+    让 j = j + 1
+  }
+  让 i = i + 1
+}
+打印(文本(列))`],
+['汉诺塔', `术 汉诺塔(n, 从, 到, 借) {
+  如果 n == 0 { 返回 }
+  汉诺塔(n - 1, 从, 借, 到)
+  打印(「把第」 + n + 「号盘：」 + 从 + 「 → 」 + 到)
+  汉诺塔(n - 1, 借, 到, 从)
+}
+汉诺塔(3, 「甲」, 「丙」, 「乙」)`],
+['估 π', `让 里面 = 0
+让 总 = 30000
+让 i = 0
+当 i < 总 {
+  让 x = 随机(10000) / 10000
+  让 y = 随机(10000) / 10000
+  如果 x * x + y * y <= 1 { 让 里面 = 里面 + 1 }
+  让 i = i + 1
+}
+打印(「落在四分之一圆里的点：」 + 里面)
+打印(「π ≈ 」 + 里面 * 4 / 总)`],
+];
+
+/* ---------- UI ---------- */
+const src = document.getElementById('src');
+const out = document.getElementById('out');
+src.value = EXAMPLES[0][1];
+
+const exBox = document.getElementById('examples');
+for (const [name, code] of EXAMPLES) {
+  const b = document.createElement('button');
+  b.textContent = name;
+  b.addEventListener('click', () => { src.value = code; run(); });
+  exBox.appendChild(b);
+}
+
+function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+function run() {
+  const t0 = performance.now();
+  out.innerHTML = '';
+  try {
+    const lines = Y.运行(src.value);
+    for (const l of lines) {
+      const d = document.createElement('div');
+      if (/^—+$|^错误/.test(l)) d.className = 'err';
+      d.textContent = l;
+      out.appendChild(d);
+    }
+    const ms = performance.now() - t0;
+    const ok = document.createElement('div');
+    ok.className = 'ok';
+    ok.textContent = `— 运行完成，${lines.length} 行输出，耗时 ${ms.toFixed(1)}ms —`;
+    out.appendChild(ok);
+  } catch (e) {
+    if (e.言灵) {
+      const d = document.createElement('div');
+      d.className = 'err';
+      d.textContent = `第 ${e.行} 行：${e.message}`;
+      out.appendChild(d);
+    } else {
+      const d = document.createElement('div');
+      d.className = 'err';
+      d.textContent = '引擎内部错误：' + e.message;
+      out.appendChild(d);
+      console.error(e);
+    }
+  }
+}
+document.getElementById('b-run').addEventListener('click', run);
+src.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); run(); }
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const s = src.selectionStart;
+    src.value = src.value.slice(0, s) + '  ' + src.value.slice(src.selectionEnd);
+    src.selectionStart = src.selectionEnd = s + 2;
+  }
+});
+
+/* 调试接口 */
+window.__yanling = {
+  run: src => {
+    try { return { ok: true, out: Y.运行(src) }; }
+    catch (e) { return e.言灵 ? { ok: false, 行: e.行, message: e.message } : { ok: false, message: e.message, internal: true }; }
+  },
+  runExample: i => { src.value = EXAMPLES[i][1]; run(); return Y.运行(EXAMPLES[i][1]); },
+  count: () => EXAMPLES.length,
+};
+})();
+</script>
+</body>
+</html>
