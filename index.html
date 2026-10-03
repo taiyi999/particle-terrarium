@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>忘潮 · The Forgetting Tide</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#04070f;
+    font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif;
+    -webkit-user-select:none;user-select:none;}
+  #sea{position:fixed;inset:0;display:block;cursor:default;}
+  /* ---------- 覆盖层 UI ---------- */
+  .panel{position:fixed;color:#9fb6cf;z-index:10;}
+  #head{top:14px;left:18px;line-height:1.5;pointer-events:none;}
+  #head .t{font-size:20px;letter-spacing:6px;color:#cfe0f2;text-shadow:0 0 14px rgba(120,180,255,.35);}
+  #head .t small{font-size:11px;letter-spacing:1px;color:#5f7996;margin-left:8px;}
+  #head .s{font-size:12px;color:#5f7996;letter-spacing:2px;margin-top:2px;}
+  #stats{font-size:12px;color:#7d97b4;margin-top:8px;}
+  #stats b{color:#aecbef;font-weight:normal;}
+  #ctrl{top:14px;right:16px;text-align:right;}
+  button{background:rgba(20,35,55,.55);border:1px solid rgba(110,160,210,.25);color:#aecbef;
+    font:inherit;font-size:12px;letter-spacing:2px;padding:6px 14px;border-radius:3px;cursor:pointer;
+    transition:background .2s,border-color .2s;}
+  button:hover{background:rgba(40,65,95,.6);border-color:rgba(140,190,240,.5);}
+  #ctrl .row{margin-bottom:6px;}
+  #foot{bottom:18px;left:50%;transform:translateX(-50%);width:min(560px,86vw);text-align:center;}
+  #teachRow{display:flex;gap:8px;}
+  #teachInput{flex:1;background:rgba(12,22,38,.7);border:1px solid rgba(110,160,210,.28);
+    color:#d7e6f7;font:inherit;font-size:14px;letter-spacing:1px;padding:9px 14px;border-radius:3px;
+    outline:none;transition:border-color .2s,box-shadow .2s;}
+  #teachInput:focus{border-color:rgba(150,200,250,.6);box-shadow:0 0 18px rgba(90,150,230,.18);}
+  #teachInput.shake{animation:shake .35s;}
+  @keyframes shake{25%{transform:translateX(-5px)}50%{transform:translateX(5px)}75%{transform:translateX(-3px)}}
+  #footTip{font-size:11px;color:#4e647f;margin-top:7px;letter-spacing:1px;}
+  /* 梦面板 */
+  #dream{bottom:92px;left:18px;max-width:min(420px,60vw);font-size:13px;line-height:1.8;color:#8fa8c6;
+    background:linear-gradient(90deg,rgba(16,28,48,.75),rgba(16,28,48,0));padding:10px 16px 10px 12px;
+    border-left:1px solid rgba(110,160,210,.25);opacity:0;transition:opacity 2.5s;pointer-events:none;}
+  #dream .lab{font-size:10px;letter-spacing:3px;color:#57718f;margin-bottom:2px;}
+  /* 见面问候 */
+  #greet{top:86px;left:50%;transform:translateX(-50%);max-width:min(640px,90vw);text-align:center;
+    font-size:13px;line-height:1.9;color:#93b0d2;text-shadow:0 0 12px rgba(60,110,180,.3);
+    opacity:0;transition:opacity 2s;pointer-events:none;letter-spacing:.5px;}
+  #greet .faded{color:#5b7291;}
+  /* 首生提示 */
+  #hint{top:50%;left:50%;transform:translate(-50%,-56%);text-align:center;font-size:14px;line-height:2.4;
+    color:#6d89ab;letter-spacing:2px;opacity:0;transition:opacity 2.5s;pointer-events:none;
+    text-shadow:0 0 16px rgba(60,110,180,.25);}
+  #hint .big{font-size:17px;color:#9db8d8;}
+  /* 帮助 */
+  #help{top:50%;left:50%;transform:translate(-50%,-50%);width:min(430px,88vw);
+    background:rgba(8,15,28,.92);border:1px solid rgba(110,160,210,.22);border-radius:4px;
+    padding:20px 24px;font-size:13px;line-height:2.2;color:#93b0d2;display:none;}
+  #help h3{margin:0 0 8px;font-size:15px;color:#cfe0f2;letter-spacing:4px;font-weight:normal;}
+  #help .k{color:#d7b96a;}
+  #help .x{margin-top:10px;text-align:right;}
+  .faded-out{opacity:0 !important;}
+</style>
+</head>
+<body>
+<canvas id="sea"></canvas>
+
+<div id="head" class="panel">
+  <div class="t">忘　潮<small>THE FORGETTING TIDE</small></div>
+  <div class="s">世界系列之五 · 我留不住的记忆</div>
+  <div id="stats"></div>
+</div>
+
+<div id="ctrl" class="panel">
+  <div class="row"><button id="btnSleep">睡 一 晚</button></div>
+  <div class="row"><button id="btnExport">导 出</button> <button id="btnHelp">？</button></div>
+</div>
+
+<div id="dream" class="panel"><div class="lab">昨　夜</div><div id="dreamText"></div></div>
+<div id="greet" class="panel"></div>
+<div id="hint" class="panel">
+  <div class="big">这片水底，空无一物。</div>
+  <div>在下方教它一个词——它会记得，直到某一次潮水。</div>
+  <div style="font-size:12px;color:#4e647f">你离开的每一天，它也会继续忘。</div>
+</div>
+
+<div id="help" class="panel">
+  <h3>忘潮怎么玩</h3>
+  <div><span class="k">教</span>　在底部输入一个词，回车。它把它沉进水里。</div>
+  <div><span class="k">想起</span>　点一颗记忆。被点亮的会记更深，牵连着的也跟着亮一点。</div>
+  <div><span class="k">牵连</span>　从一颗按住拖到另一颗。有牵连的记忆互相守护，褪色得慢。</div>
+  <div><span class="k">睡</span>　潮水上涨。太模糊的会被带走，沉入河底——只留数量，不留内容。</div>
+  <div><span class="k">离开</span>　你不在的日子它照常遗忘（半速，每次至多折算十二夜）。
+    下次见面，它会告诉你它梦见了什么、又丢了哪句。</div>
+  <div class="x"><button id="btnClose">明白了</button></div>
+</div>
+
+<div id="foot" class="panel">
+  <div id="teachRow">
+    <input id="teachInput" type="text" maxlength="40" placeholder="教它一个词（它会记一阵子）…" autocomplete="off">
+    <button id="btnTeach">沉 入 水 底</button>
+  </div>
+  <div id="footTip">想起＝点击　·　牵连＝拖拽　·　离开越久，忘得越多</div>
+</div>
+
+<script>
+'use strict';
+window.__errs = [];
+window.addEventListener('error', e => __errs.push(String(e.message || e)));
+
+/* ================= 基础 ================= */
+const clamp = (v,a,b)=> v<a?a:(v>b?b:v);
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+const $ = id => document.getElementById(id);
+
+/* ================= 常量（键名统一走这里） ================= */
+const P = {
+  LS_KEY: 'forgetting-tide-v1',
+  MEM_CAP: 40,          // 记忆容量上限
+  DECAY: 0.055,         // 每夜基础遗忘量
+  THRESH: 0.12,         // 低于此强度 → 被潮水带走
+  RECALL: 0.25,         // 想起一次的增益
+  NEIGH_K: 0.10,        // 牵连传导系数
+  SUPPORT_MAX: 0.60,    // 牵连庇护上限
+  EDGE_NEW: 0.30,       // 新牵连权重
+  EDGE_ADD: 0.30,       // 重复牵连增量
+  EDGE_CAP: 6,          // 每颗记忆最多牵连数
+  DREAM: 0.03,          // 梦的复习增益（不足以让小世界永生）
+  GREET: 0.05,          // 见面自述的复习增益
+  OFFLINE_RATE: 0.5,    // 离线遗忘半速
+  OFFLINE_CAP: 12,      // 单次离开最多折算夜数
+  GOLD_AGE: 20,         // 活过多少夜开始镀金
+  RETEACH: 0.30,        // 重教同一个词的增益
+};
+const DREAMS = [
+  (a,b)=>`梦见「${a}」和「${b}」在潮水底下交换了位置。`,
+  (a,b)=>`梦见「${a}」长出了「${b}」的颜色。`,
+  (a,b)=>`梦见「${a}」变得很轻，浮到水面又沉回来。`,
+  (a,b)=>`梦见有人在很远的地方又念了一遍「${b}」。`,
+  (a,b)=>`梦见「${a}」碎成星屑，拼成了「${b}」的形状。`,
+];
+
+/* ================= 状态 ================= */
+let state = null;
+let motes = [], siltCache = [];
+let whispers = [], ripples = [];
+let sleepT = -1;            // 睡眠动画进度，-1 = 清醒
+let sleeping = false;
+let lastOffline = null;     // 离线结果，供问候语
+let hoverId = null;
+let drag = null;            // {id, moved, cx, cy}
+
+function freshState(seed){
+  return { v:1, seed:seed>>>0, day:0, visits:0, nextId:1, nextIdx:0,
+    memories:[], edges:[], silt:0, lastDream:null, lastSeen:Date.now() };
+}
+function save(){ try{ state.lastSeen = Date.now(); localStorage.setItem(P.LS_KEY, JSON.stringify(state)); }catch(e){} }
+function load(){
+  try{
+    const raw = localStorage.getItem(P.LS_KEY);
+    if(!raw) return null;
+    const s = JSON.parse(raw);
+    if(s && s.v===1 && Array.isArray(s.memories)) return s;
+  }catch(e){}
+  return null;
+}
+function sanitize(){
+  let bad = false;
+  for(const m of state.memories){
+    if(!Number.isFinite(m.strength)){ m.strength = 0.5; bad = true; }
+    if(!Number.isFinite(m.x) || !Number.isFinite(m.y)){ m.x=0.5; m.y=0.45; bad = true; }
+    m.strength = clamp(m.strength, 0, 1);
+  }
+  if(bad) __errs.push('sanitize: non-finite state repaired');
+}
+
+/* ================= 遗忘引擎 ================= */
+function supportOf(mem){
+  let s = 0;
+  for(const e of state.edges){
+    if(e.a===mem.id || e.b===mem.id){
+      const other = state.memories.find(m=>m.id===(e.a===mem.id?e.b:e.a));
+      if(other) s += e.w * other.strength * P.NEIGH_K;
+    }
+  }
+  return clamp(s, 0, P.SUPPORT_MAX);
+}
+// 一夜过去：衰减 → 黎明结算（带走模糊的）→ 做梦。
+// 判定与结算都基于衰减前算出的 decayed 值，保证阈值判断与写回一致。
+function nightPassClean(){
+  const calc = new Map();
+  for(const m of state.memories) calc.set(m.id, m.strength - P.DECAY*(1-supportOf(m)));
+  const forgotten = [];
+  for(const m of [...state.memories]){
+    if(calc.get(m.id) < P.THRESH){
+      forgotten.push(m.text);
+      whispers.push({text:`「${m.text}」沉下去了`, x:m.x, y:m.y, age:0});
+    }
+  }
+  if(forgotten.length){
+    const dead = new Set([...calc.entries()].filter(([,v])=>v<P.THRESH).map(([k])=>k));
+    state.silt += dead.size;
+    state.memories = state.memories.filter(m=>!dead.has(m.id));
+    state.edges = state.edges.filter(e=>!dead.has(e.a) && !dead.has(e.b));
+  }
+  for(const m of state.memories) m.strength = clamp(calc.get(m.id), 0, 1);
+  state.day += 1;
+  const dream = dreamNow();
+  return { forgotten, dream };
+}
+function dreamNow(){
+  const ms = state.memories;
+  if(ms.length===0){ state.lastDream = {text:'它梦见了一片白，什么也没有。', day:state.day}; return state.lastDream.text; }
+  if(ms.length===1){ state.lastDream = {text:`梦见「${ms[0].text}」独自亮了一整夜。`, day:state.day}; return state.lastDream.text; }
+  const rng = mulberry32(hashStr(state.seed+'|dream|'+state.day));
+  const weighted = [];
+  for(const m of ms) weighted.push({m, w:0.3+m.strength});
+  const pick = ()=>{
+    let sum = weighted.reduce((a,x)=>a+x.w,0), r = rng()*sum;
+    for(let i=0;i<weighted.length;i++){ r -= weighted[i].w; if(r<=0) return weighted.splice(i,1)[0].m; }
+    return weighted[weighted.length-1].m;
+  };
+  const a = pick(), b = pick();
+  a.strength = clamp(a.strength + P.DREAM, 0, 1);
+  b.strength = clamp(b.strength + P.DREAM, 0, 1);
+  const tpl = DREAMS[Math.floor(rng()*DREAMS.length) % DREAMS.length];
+  state.lastDream = { text: tpl(a.text, b.text), day: state.day };
+  return state.lastDream.text;
+}
+
+/* ================= 交互动作 ================= */
+function teach(raw){
+  const text = raw.trim().replace(/\s+/g,' ');
+  if(!text){ shakeInput(); return null; }
+  const chars = [...text];
+  if(chars.length > 14){ shakeInput(); flashTip('太长了——它记不住这么长的句子'); return null; }
+  const exist = state.memories.find(m=>m.text===text);
+  if(exist){
+    exist.strength = clamp(exist.strength + P.RETEACH, 0, 1);
+    exist.lastRecall = state.day;
+    flashTip('这个词它见过——记得更深了');
+    ripples.push({x:exist.x, y:exist.y, age:0});
+    save(); return exist.id;
+  }
+  if(state.memories.length >= P.MEM_CAP){
+    let weakest = null;
+    for(const m of state.memories) if(!weakest || m.strength<weakest.strength) weakest = m;
+    if(weakest){
+      whispers.push({text:`「${weakest.text}」被挤下去了`, x:weakest.x, y:weakest.y, age:0});
+      state.memories = state.memories.filter(m=>m!==weakest);
+      state.edges = state.edges.filter(e=>e.a!==weakest.id && e.b!==weakest.id);
+      state.silt += 1;
+    }
+    flashTip('它满了。为了装下你的，它放走了最模糊的一句');
+  }
+  const idx = state.nextIdx++;
+  const rng = mulberry32(hashStr(state.seed+'|pos|'+idx));
+  const ang = idx*2.399963 + (state.seed%628)/100;
+  const r = 0.09 + 0.30*Math.sqrt((idx+1)/P.MEM_CAP) * (0.75+0.5*rng());
+  const aspect = H/Math.max(W,1);
+  const m = {
+    id: state.nextId++, text,
+    x: clamp(0.5 + r*Math.cos(ang)*aspect, 0.06, 0.94),
+    y: clamp(0.44 + r*Math.sin(ang)*0.86, 0.08, 0.72),
+    vx:0, vy:0, phase: rng()*6.28,
+    hue: 180 + hashStr(text)%140,
+    strength: 1, born: state.day, lastRecall: state.day,
+  };
+  state.memories.push(m);
+  ripples.push({x:m.x, y:m.y, age:0});
+  save();
+  if(state.memories.length===1) hideHint();
+  return m.id;
+}
+function recall(id){
+  const m = state.memories.find(x=>x.id===id);
+  if(!m) return;
+  m.strength = clamp(m.strength + P.RECALL, 0, 1);
+  m.lastRecall = state.day;
+  for(const e of state.edges){
+    if(e.a===id || e.b===id){
+      e.w = clamp(e.w + 0.05, 0, 1);
+      const other = state.memories.find(o=>o.id===(e.a===id?e.b:e.a));
+      if(other) other.strength = clamp(other.strength + e.w*P.NEIGH_K, 0, 1);
+    }
+  }
+  ripples.push({x:m.x, y:m.y, age:0});
+  save();
+}
+function associate(a, b){
+  if(a===b) return;
+  let e = state.edges.find(x=>(x.a===a&&x.b===b)||(x.a===b&&x.b===a));
+  if(e){ e.w = clamp(e.w + P.EDGE_ADD, 0, 1); }
+  else{
+    e = {a, b, w: P.EDGE_NEW};
+    state.edges.push(e);
+    for(const id of [a,b]){
+      const links = state.edges.filter(x=>x.a===id||x.b===id);
+      if(links.length > P.EDGE_CAP){
+        links.sort((p,q)=>p.w-q.w);
+        const drop = links[0];
+        if(drop.w < e.w || drop===e && links.length>1) state.edges = state.edges.filter(x=>x!==drop);
+      }
+    }
+  }
+  const ma = state.memories.find(m=>m.id===a), mb = state.memories.find(m=>m.id===b);
+  if(ma&&mb) flashTip(`牵连：「${ma.text}」 ↔ 「${mb.text}」`);
+  save();
+}
+function sleepOnce(){
+  // 仅由睡一晚按钮的动画回调调用；sleeping 旗标由按钮处理器负责，这里不再检查
+  const r = nightPassClean();
+  save();
+  return r;
+}
+
+/* ================= 离线流逝 ================= */
+function injectAway(ms, silent){
+  ms = Math.max(0, ms|0);
+  if(ms < 30*60000) return null;                    // 不到半小时视为没离开
+  const days = Math.min(ms/86400000 * P.OFFLINE_RATE, P.OFFLINE_CAP);
+  const before = state.memories.length;
+  const nights = Math.max(1, Math.round(days));
+  let allForgotten = [];
+  for(let i=0;i<nights;i++){
+    const r = nightPassClean();
+    allForgotten = allForgotten.concat(r.forgotten);
+  }
+  const res = { days: days, nights, forgotten: allForgotten, before, after: state.memories.length };
+  lastOffline = res;
+  if(!silent) save();
+  return res;
+}
+
+/* ================= 画布与渲染 ================= */
+const cv = $('sea'), ctx = cv.getContext('2d');
+let W=0, H=0, DPR=1;
+function resize(){
+  DPR = Math.min(window.devicePixelRatio||1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = W*DPR; cv.height = H*DPR;
+  cv.style.width = W+'px'; cv.style.height = H+'px';
+}
+window.addEventListener('resize', resize);
+resize();
+
+function initAmbient(){
+  const rng = mulberry32(state.seed);
+  motes = [];
+  for(let i=0;i<60;i++) motes.push({
+    x:rng(), y:rng(), r:0.6+rng()*1.8, a:0.03+rng()*0.09,
+    spd:0.004+rng()*0.012, ph:rng()*6.28,
+  });
+  siltCache = [];
+}
+function siltDot(i){
+  if(!siltCache[i]){
+    const rng = mulberry32(state.seed ^ Math.imul(i+1,2654435761));
+    siltCache[i] = { x:rng(), r:0.5+rng()*1.4, a:0.04+rng()*0.10 };
+  }
+  return siltCache[i];
+}
+function blurText(text, s){
+  if(s >= 0.55) return text;
+  const chars = [...text];
+  const keep = Math.max(1, Math.round(chars.length * (s/0.55)));
+  return chars.slice(0, keep).join('') + '…';
+}
+function goldBlend(m){
+  const age = state.day - m.born;
+  return clamp((age - P.GOLD_AGE)/30, 0, 0.7);
+}
+function nodeRadius(m){ return (9 + 17*m.strength) * (H/900+0.55); }
+
+function render(t){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  // 背景
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#04070f'); g.addColorStop(0.6,'#081120'); g.addColorStop(1,'#0b1526');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  // 浮尘
+  for(const p of motes){
+    const px = ((p.x + Math.sin(t*0.0001+p.ph)*0.02)%1+1)%1 * W;
+    const py = ((p.y - t*0.001*p.spd/H)%1+1)%1 * H;
+    ctx.globalAlpha = p.a;
+    ctx.fillStyle = '#9fc2e8';
+    ctx.beginPath(); ctx.arc(px,py,p.r,0,6.2832); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // 河底淤积（只留数量）
+  const siltY = H - Math.max(26, H*0.045);
+  const nShow = Math.min(state.silt, 240);
+  for(let i=0;i<nShow;i++){
+    const d = siltDot(i);
+    ctx.globalAlpha = d.a;
+    ctx.fillStyle = '#5b7fa8';
+    ctx.beginPath(); ctx.arc(d.x*W, siltY + Math.sin(i*2.7)*10, d.r, 0, 6.2832); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  if(state.silt>0){
+    ctx.fillStyle = 'rgba(91,127,168,0.5)';
+    ctx.font = '11px "Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`河底沉着 ${state.silt} 个被忘掉的名字`, 18, H-14);
+  }
+  // 牵连丝线
+  for(const e of state.edges){
+    const a = state.memories.find(m=>m.id===e.a), b = state.memories.find(m=>m.id===e.b);
+    if(!a||!b) continue;
+    ctx.globalAlpha = 0.08 + 0.30*e.w * Math.min(a.strength,b.strength);
+    ctx.strokeStyle = '#6fa4d8';
+    ctx.lineWidth = 0.6 + e.w*1.2;
+    ctx.beginPath();
+    const ax=a.x*W, ay=a.y*H, bx=b.x*W, by=b.y*H;
+    const mx=(ax+bx)/2 + Math.sin(t*0.0004+e.a)*8, my=(ay+by)/2 + Math.cos(t*0.0005+e.b)*8;
+    ctx.moveTo(ax,ay); ctx.quadraticCurveTo(mx,my,bx,by); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  // 拖拽中的临时丝线
+  if(drag && drag.moved && drag.id!=null){
+    const m = state.memories.find(x=>x.id===drag.id);
+    if(m){
+      ctx.globalAlpha = 0.5; ctx.strokeStyle = '#9cc3ea'; ctx.lineWidth = 1.2;
+      ctx.setLineDash([4,5]);
+      ctx.beginPath(); ctx.moveTo(m.x*W, m.y*H); ctx.lineTo(drag.cx, drag.cy); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    }
+  }
+  // 记忆
+  for(const m of state.memories){
+    const x = m.x*W, y = m.y*H, r = nodeRadius(m);
+    const gold = goldBlend(m);
+    const hue = m.hue + (45 - m.hue)*gold;
+    // 光晕
+    const rg = ctx.createRadialGradient(x,y,0,x,y,r*3.2);
+    rg.addColorStop(0, `hsla(${hue},70%,68%,${0.20+0.34*m.strength})`);
+    rg.addColorStop(1, 'hsla(0,0%,0%,0)');
+    ctx.fillStyle = rg;
+    ctx.beginPath(); ctx.arc(x,y,r*3.2,0,6.2832); ctx.fill();
+    // 球体
+    ctx.fillStyle = `hsla(${hue},${65-gold*25}%,${58+gold*12}%,${0.35+0.55*m.strength})`;
+    ctx.beginPath(); ctx.arc(x,y,r,0,6.2832); ctx.fill();
+    ctx.strokeStyle = `hsla(${hue},70%,80%,${0.3+0.4*m.strength})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(x,y,r+2,0,6.2832); ctx.stroke();
+    // 文字
+    const full = (hoverId===m.id || drag && drag.id===m.id);
+    const label = full ? m.text : blurText(m.text, m.strength);
+    ctx.globalAlpha = 0.35 + 0.6*m.strength;
+    ctx.fillStyle = full ? '#eaf3fd' : '#c4d8ee';
+    ctx.font = '13px "Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x, y + r + 18);
+    if(full && blurText(m.text,m.strength)!==m.text){
+      ctx.globalAlpha = 0.5; ctx.fillStyle = '#7d97b4';
+      ctx.font = '10px "Microsoft YaHei",sans-serif';
+      ctx.fillText('(它有点不确定)', x, y + r + 33);
+    }
+    ctx.globalAlpha = 1;
+  }
+  // 涟漪
+  for(const rp of ripples){
+    const a = 1 - rp.age/45;
+    if(a<=0) continue;
+    ctx.globalAlpha = a*0.5; ctx.strokeStyle = '#a9cdf0'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(rp.x*W, rp.y*H, 8 + rp.age*1.8, 0, 6.2832); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  // 呢喃（遗忘的词往下沉）
+  for(const wp of whispers){
+    const a = 1 - wp.age/260;
+    if(a<=0) continue;
+    ctx.globalAlpha = a*0.8;
+    ctx.fillStyle = '#89a8cc';
+    ctx.font = '12px "Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(wp.text, wp.x*W, wp.y*H + wp.age*0.55);
+    ctx.globalAlpha = 1;
+  }
+  // 睡眠潮水
+  if(sleepT >= 0){
+    const w = Math.sin(Math.PI*clamp(sleepT,0,1));
+    const waveY = H*(1 - 0.72*w);
+    const wg = ctx.createLinearGradient(0,waveY,0,H);
+    wg.addColorStop(0,'rgba(90,150,220,0.02)');
+    wg.addColorStop(0.25,'rgba(80,140,215,0.12)');
+    wg.addColorStop(1,'rgba(50,95,165,0.20)');
+    ctx.fillStyle = wg;
+    ctx.beginPath();
+    ctx.moveTo(0, waveY);
+    for(let x=0;x<=W;x+=16) ctx.lineTo(x, waveY + Math.sin(x*0.02 + t*0.004)*6);
+    ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(160,205,250,0.35)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, waveY);
+    for(let x=0;x<=W;x+=16) ctx.lineTo(x, waveY + Math.sin(x*0.02 + t*0.004)*6);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(3,6,12,0.35)'; ctx.fillRect(0,0,W,H);
+  }
+}
+
+/* ================= 物理 ================= */
+function physics(dtMs){
+  const dt = clamp(dtMs/1000, 0, 0.05);
+  const t = performance.now();
+  for(const m of state.memories){
+    m.vx += Math.sin(t*0.00035 + m.phase) * 0.000016 * dt*60;
+    m.vy += Math.cos(t*0.00028 + m.phase*1.3) * 0.000012 * dt*60;
+  }
+  // 斥力
+  for(let i=0;i<state.memories.length;i++){
+    for(let j=i+1;j<state.memories.length;j++){
+      const a = state.memories[i], b = state.memories[j];
+      let dx = b.x-a.x, dy = b.y-a.y;
+      const d2 = dx*dx+dy*dy, min = 0.10;
+      if(d2 < min*min && d2 > 1e-9){
+        const d = Math.sqrt(d2), f = (min-d)/min * 0.0009 * dt*60;
+        dx/=d; dy/=d;
+        a.vx -= dx*f; a.vy -= dy*f; b.vx += dx*f; b.vy += dy*f;
+      }
+    }
+  }
+  // 牵连弹簧
+  for(const e of state.edges){
+    const a = state.memories.find(m=>m.id===e.a), b = state.memories.find(m=>m.id===e.b);
+    if(!a||!b) continue;
+    const dx = b.x-a.x, dy = b.y-a.y;
+    const d = Math.hypot(dx,dy) || 1e-6, rest = 0.17 + 0.1*(1-e.w);
+    const f = (d-rest)/d * 0.0015 * dt*60;
+    a.vx += dx*f; a.vy += dy*f; b.vx -= dx*f; b.vy -= dy*f;
+  }
+  for(const m of state.memories){
+    m.vx *= 0.94; m.vy *= 0.94;
+    m.x = clamp(m.x + m.vx*dt*60, 0.05, 0.95);
+    m.y = clamp(m.y + m.vy*dt*60, 0.06, 0.74);
+  }
+}
+
+/* ================= 主循环 ================= */
+let lastT = performance.now();
+function loop(t){
+  const dt = t - lastT; lastT = t;
+  physics(dt);
+  for(const r of ripples) r.age += dt/16.7;
+  ripples = ripples.filter(r=>r.age<45);
+  for(const w of whispers) w.age += dt/16.7;
+  whispers = whispers.filter(w=>w.age<260);
+  if(sleepT >= 0){
+    sleepT += dt/2400;
+    if(sleepT >= 1){ sleepT = -1; sleeping = false; }
+  }
+  render(t);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ================= UI ================= */
+function shakeInput(){
+  const el = $('teachInput');
+  el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+}
+let tipTimer = null;
+function flashTip(text){
+  const el = $('footTip'), old = '想起＝点击　·　牵连＝拖拽　·　离开越久，忘得越多';
+  el.textContent = text;
+  clearTimeout(tipTimer);
+  tipTimer = setTimeout(()=>{ el.textContent = old; }, 4000);
+}
+function hideHint(){ $('hint').classList.add('faded-out'); }
+function showDream(text){
+  $('dreamText').textContent = text;
+  $('dream').style.opacity = 1;
+  clearTimeout(showDream._t);
+  showDream._t = setTimeout(()=>{ $('dream').classList.add('faded-out'); }, 14000);
+  $('dream').classList.remove('faded-out');
+}
+function renderStats(){
+  const n = state.memories.length;
+  let oldest = null;
+  for(const m of state.memories) if(!oldest || m.born<oldest.born || (m.born===oldest.born && m.id<oldest.id)) oldest = m;
+  const parts = [
+    `第 <b>${Math.floor(state.day)}</b> 夜`, `见面 <b>${state.visits}</b> 次`,
+    `记住 <b>${n}</b> 句`, `沉底 <b>${state.silt}</b> 句`,
+  ];
+  if(oldest) parts.push(`最老的记忆 <b>「${blurText(oldest.text, oldest.strength)}」</b> 已 <b>${Math.floor(state.day-oldest.born)}</b> 夜`);
+  $('stats').innerHTML = parts.join('　·　');
+  $('btnSleep').disabled = sleeping;
+}
+setInterval(renderStats, 500);
+
+function greet(){
+  const el = $('greet');
+  let html = '';
+  if(lastOffline){
+    const d = lastOffline;
+    if(d.days >= 0.02){
+      const dd = Math.round(d.days*10)/10;
+      html += `你离开了 <b>${dd%1===0 ? dd.toFixed(0) : dd.toFixed(1)} 天</b>。`;
+      html += d.forgotten.length
+        ? `潮水带走了 <b>${d.forgotten.length}</b> 句。<span class="faded">（${d.forgotten.slice(0,3).map(t=>`「${t}」`).join('、')}${d.forgotten.length>3?'…':''}）</span><br>`
+        : `它一句也没忘。<br>`;
+    }
+  }
+  const top = [...state.memories].sort((a,b)=>b.strength-a.strength).slice(0,2);
+  if(top.length){
+    html += `它还记得：<b>「${blurText(top[0].text, top[0].strength)}」</b>`;
+    if(top[1]) html += ` 和 <b>「${blurText(top[1].text, top[1].strength)}」</b>`;
+    for(const m of top) m.strength = clamp(m.strength + P.GREET, 0, 1);
+    if(state.lastDream && state.lastDream.day === Math.floor(state.day))
+      html += `<br><span class="faded">昨夜它梦见：${state.lastDream.text.replace(/^梦见/,'')}</span>`;
+  }else if(html){
+    html += `<span class="faded">它现在什么也不记得了。</span>`;
+  }
+  if(!html) return;
+  el.innerHTML = html;
+  el.style.opacity = 1;
+  setTimeout(()=>{ el.classList.add('faded-out'); }, 9000);
+}
+
+/* 输入 */
+function doTeach(){
+  if(sleeping) return;                       // 潮水未退，暂不收词
+  const id = teach($('teachInput').value);
+  if(id!=null){ $('teachInput').value=''; }
+  $('teachInput').focus();
+}
+$('btnTeach').addEventListener('click', doTeach);
+$('teachInput').addEventListener('keydown', e=>{ if(e.key==='Enter') doTeach(); });
+
+/* 睡 */
+$('btnSleep').addEventListener('click', ()=>{
+  if(sleeping) return;
+  sleeping = true; sleepT = 0;
+  setTimeout(()=>{
+    const r = sleepOnce();
+    if(r.forgotten.length===0 && state.memories.length===0){
+      showDream('它梦见了一片白，什么也没有。');
+    }else if(r.dream){ showDream(r.dream); }
+    renderStats();
+  }, 1300);
+});
+
+/* 导出 */
+$('btnExport').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const d = new Date();
+  a.download = `forgetting-tide-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+/* 帮助 */
+$('btnHelp').addEventListener('click', ()=>{ $('help').style.display='block'; });
+$('btnClose').addEventListener('click', ()=>{ $('help').style.display='none'; });
+
+/* 指针：想起 / 牵连 */
+function hitTest(px, py){
+  let best = null, bestD = 1e9;
+  for(const m of state.memories){
+    const dx = px - m.x*W, dy = py - m.y*H;
+    const d = Math.hypot(dx, dy);
+    if(d < nodeRadius(m)+10 && d < bestD){ best = m; bestD = d; }
+  }
+  return best;
+}
+cv.addEventListener('pointerdown', e=>{
+  if(sleeping) return;
+  const m = hitTest(e.clientX, e.clientY);
+  drag = m ? {id:m.id, moved:false, cx:e.clientX, cy:e.clientY} : {id:null, moved:false, cx:e.clientX, cy:e.clientY};
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e=>{
+  const h = hitTest(e.clientX, e.clientY);
+  hoverId = h ? h.id : null;
+  cv.style.cursor = h ? 'pointer' : 'default';
+  if(drag){
+    if(Math.hypot(e.clientX-drag.cx, e.clientY-drag.cy) > 7) drag.moved = true;
+    drag.cx = e.clientX; drag.cy = e.clientY;
+  }
+});
+cv.addEventListener('pointerup', e=>{
+  if(!drag) return;
+  const startId = drag.id, moved = drag.moved;
+  const target = hitTest(e.clientX, e.clientY);
+  if(startId!=null && !moved){
+    recall(startId);
+  }else if(startId!=null && moved && target && target.id!==startId){
+    associate(startId, target.id);
+  }
+  drag = null;
+});
+
+/* ================= 启动 ================= */
+(function boot(){
+  const saved = load();
+  if(saved){ state = saved; }
+  else{
+    state = freshState((Math.random()*0xFFFFFFFF)>>>0);
+    $('hint').style.opacity = 1;
+  }
+  initAmbient();
+  state.visits += 1;
+  // 离线流逝（第一次访问不触发）
+  if(saved){
+    injectAway(Date.now() - (saved.lastSeen || Date.now()), true);
+    save();
+    greet();
+    if(state.lastDream && !lastOffline){
+      $('dreamText').textContent = state.lastDream.text;
+      $('dream').style.opacity = 0.55;
+    }
+    if(state.memories.length) hideHint(); else $('hint').style.opacity = 1;
+  }
+  renderStats();
+  save();
+})();
+
+/* ================= 调试接口 ================= */
+window.__tide = {
+  version: '0.1.0',
+  stats(){
+    sanitize();
+    return {
+      n: state.memories.length, silt: state.silt, day: Math.floor(state.day),
+      visits: state.visits, edges: state.edges.length,
+      strengths: state.memories.map(m=>m.strength),
+      texts: state.memories.map(m=>m.text),
+      nan: state.memories.some(m=>!Number.isFinite(m.strength)||!Number.isFinite(m.x)||!Number.isFinite(m.y)),
+      errs: __errs.length,
+    };
+  },
+  teach: t => teach(t),
+  recall: id => recall(id),
+  associate: (a,b) => associate(a,b),
+  sleepNight(n=1){ const out=[]; for(let i=0;i<n;i++){ const r=nightPassClean(); out.push(...r.forgotten); } save(); return out; },
+  injectAway: ms => injectAway(ms),
+  state: () => JSON.parse(JSON.stringify(state)),
+  reset(seed){
+    state = freshState(seed===undefined ? (Math.random()*0xFFFFFFFF)>>>0 : seed>>>0);
+    try{ localStorage.setItem(P.LS_KEY, JSON.stringify(state)); }catch(e){}
+    initAmbient();
+    whispers = []; ripples = []; lastOffline = null;
+    $('hint').style.opacity = 1; $('dream').style.opacity = 0;
+    renderStats();
+    return 'reset ok, seed='+state.seed;
+  },
+  quickTest(){
+    this.reset(1234);
+    const words = ['回声','潮水','萤火','渡口','名字'];
+    const ids = words.map(w=>this.teach(w));
+    this.associate(ids[0], ids[1]);
+    this.associate(ids[2], ids[3]);
+    const forgotten = this.sleepNight(3);
+    return { ids, forgotten, stats: this.stats(), state: this.state() };
+  },
+};
+</script>
+</body>
+</html>
