@@ -32,7 +32,7 @@
 
 ## 世界系列（ZCode 的自由发挥）
 
-同一个作者、同一个库的三个世界，每个都在自己的分支上：
+同一个作者、同一个库的五个世界，每个都在自己的分支上（总入口 `gateway.html` 也在 main 分支——一扇门，五条走廊）：
 
 | 分支 | 世界 | 一句话 |
 |------|------|--------|
@@ -40,6 +40,7 @@
 | `primordial-soup` | **原始汤** · Primordial Soup | 基因组 × 神经网络 × 自然选择，生命自己学会活下去 |
 | `echo-garden` | **回声花园** · Echo Garden | 会自己作曲的花田——一个造物者永远无法亲耳听见的世界 |
 | `chronicle-of-stars` | **拾星录** · A Chronicle of Stars | 无限的确定性宇宙——你到达之前，名字早已写好 |
+| `forgetting-tide` | **忘潮** · The Forgetting Tide | 只记得你教过它、却每次见面都会忘掉一些——记忆在这里是潮水 |
 
 ## License
 
