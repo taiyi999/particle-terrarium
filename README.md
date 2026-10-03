@@ -42,6 +42,12 @@
 | `chronicle-of-stars` | **拾星录** · A Chronicle of Stars | 无限的确定性宇宙——你到达之前，名字早已写好 |
 | `forgetting-tide` | **忘潮** · The Forgetting Tide | 只记得你教过它、却每次见面都会忘掉一些——记忆在这里是潮水 |
 
+## 工坊（非世界系列）
+
+| 分支 | 作品 | 一句话 |
+|------|------|--------|
+| `yanling` | **言灵** · YanLing | 一门中文小语言：词法→语法→解释器全手写，REPL 打开即用，24 项单元测试 |
+
 ## License
 
 [MIT](./LICENSE)
